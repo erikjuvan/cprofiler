@@ -7,7 +7,8 @@ def add_profiling_info_to_file(filename):
     infilename = filename
     outfilename = filename + ".profiled"
 
-    with open(filename, "r", encoding='unicode_escape') as infile, open(outfilename, "w") as outfile:
+    #with open(filename, "r", encoding='unicode_escape') as infile, open(outfilename, "w") as outfile:
+    with open(filename, "r") as infile, open(outfilename, "w") as outfile:
         cnt  = 0
         func_name = ""
         func_start = ""
@@ -21,46 +22,88 @@ def add_profiling_info_to_file(filename):
         
         infilename = infilename.replace(".", "_")
 
-        prev_line = ""
+        outfile.write("#include \"profiler.h\"\n\n")
+
+        lines = []
         for line in infile:
 
+            lines.append(line)
+
+            # check if the line is a comment "//"
+            match = re.search(r"^\s*\/\/", line)
+            if match:
+                outfile.write(line)
+                continue
+
             if "@{" in line or "@}" in line:
-                if cnt == 0:
-                    outfile.write(line)
+                outfile.write(line)
                 continue
         
             if "{" in line and "}" in line: # case when "{}"
-                if cnt == 0:
-                    outfile.write(line)
+                outfile.write(line)
                 continue
 
             if "{" in line:
                 cnt += 1
                 if cnt == 1:
-                    match = re.search(r"\s(\w+)[(]", prev_line)
-                    if match:
-                        func_name  = match.group(1)                        
-                        var_start  = infilename + "_" + func_name + "_start"
-                        var_diff   = infilename + "_" + func_name + "_diff"
-                        var_max    = infilename + "_" + func_name + "_max"
-                        var_cnt    = infilename + "_" + func_name + "_cnt"
-                        added_variables.append(var_start)
-                        added_variables.append(var_diff)
-                        added_variables.append(var_max)
-                        added_variables.append(var_cnt)
+                    match_found = False
+                    prev_line_lookups = 0
+                    for l in reversed(lines):
 
-                        func_start = """    if (profiler_recording)
-    {{
-        profiler_vars.{vs} = GET_SYS_TICK_US();
-    }}\n\n""".format(vs = var_start)
+                        # remove any text following '{'
+                        if "{" in l:
+                            l = l[:l.index('{')]
 
-                        func_end   = """    if (profiler_recording)
+                        # regex to find function name
+                        match = re.search(r"\s(\w+)\([^(]*$", l)
+                        if match:
+                            if "sizeof" not in l: # if there is a match make sure it is not a sizeof function
+                                match_found = True
+                                break
+
+                        # don't look more than 3 previous lines
+                        prev_line_lookups += 1
+                        if prev_line_lookups >= 3:
+                            break
+
+                    if match_found:
+                        func_name = match.group(1)
+                        def make_var(name):
+                            var_name = infilename + "_" + func_name + name
+                            added_variables.append(var_name)
+                            return var_name
+                        var_dur    = make_var("_dur")
+                        var_accum  = make_var("_accum")
+                        var_avg_accum = make_var("_avg_accum")
+                        var_avg    = make_var("_avg")
+                        var_max    = make_var("_max")
+                        var_cnt    = make_var("_cnt")
+
+                        func_start = """    /// PROFILER ///
+    static uint32_t _profiler_start = 0;
+    if (profiler_recording)
+    {        
+        _profiler_start = GET_SYS_TICK_US();
+    }
+    ////////////////
+    \n"""
+
+                        func_end = """
+    /// PROFILER ///
+    if (profiler_recording)
     {{
-        profiler_vars.{vd} = GET_ELAPSED_TIME_US(profiler_vars.{vs});
+        profiler_vars.{vd} = GET_ELAPSED_TIME_US(_profiler_start);
+        profiler_vars.{vc}++;        
+        profiler_vars.{vacc} += profiler_vars.{vd};
+        profiler_vars.{vavgacc} += profiler_vars.{vd};
         if (profiler_vars.{vd} > profiler_vars.{vm}) profiler_vars.{vm} = profiler_vars.{vd};
-        profiler_vars.{vc}++;
-    }}\n""".format(vd = var_diff, vs = var_start, vm = var_max, vc = var_cnt)
-
+        if ((profiler_vars.{vc} & 0xF) == 0)
+        {{
+            profiler_vars.{vavg} = profiler_vars.{vavgacc} >> 4;
+            profiler_vars.{vavgacc} = 0;
+        }}
+    }}
+    ////////////////\n""".format(vd = var_dur, vacc = var_accum, vavgacc = var_avg_accum, vavg = var_avg, vm = var_max, vc = var_cnt)
 
                         outfile.write(line)
                         outfile.write(func_start)
@@ -75,8 +118,6 @@ def add_profiling_info_to_file(filename):
 
             outfile.write(line)
 
-            prev_line = line
-        
         outfile.close()
         os.replace(outfilename, filename)
 
@@ -84,40 +125,41 @@ def add_profiling_info_to_file(filename):
 
 
 def add_profiler_variables_to_new_file(list_of_added_variables):
-    f = open("profiler.c", "w")
+    fprofiler_c = open("profiler.c", "w")
 
-    profiler_src = """#include <stdint.h>
+    profiler_c_src = """#include <stdint.h>
 #include "trace.h"
+#include "profiler.h"
 
 int profiler_recording = 1;
 
-struct
-{
-"""
+struct profiler_vars profiler_vars = {0};
 
-    for entry in list_of_added_variables:
-        profiler_src += "    uint32_t " + entry + " = 0;\n"
-
-    profiler_src += "} profiler_vars;\n\n"
-
-    profiler_src += """
+static int _profiler_running = 0;
+static int _profiler_print_cnt = 0;
 
 static void profiler_print_vars(void)
 {    
-    uint32_t *p = (uint32_t *)&profiler_vars;
-    for (int i = 0; i < sizeof(profiler_vars / sizeof(uint32_t)); ++i, p++)
+    printf("=====BEGIN %d\\n", _profiler_print_cnt);
+    uint32_t *p = (uint32_t *)&profiler_vars;    
+    for (int i = 0; i < (sizeof(profiler_vars) / sizeof(uint32_t)); ++i, p++)
     {
-        printf("%ld\\n", *p);
+        printf("%ld,", *p);
     }
+    printf("\\n=====END %d\\n", _profiler_print_cnt);
+    _profiler_print_cnt++;
 }
 
 void profiler_run(void)
 {
     static uint32_t start = 0;
 
+    if (!_profiler_running)
+        return;
+
     if (GET_ELAPSED_TIME_MS(start) > 1000)
     {
-        start = GET_SYS_TICK_MS()
+        start = GET_SYS_TICK_MS();
         if (profiler_recording == 1)
         {
             profiler_recording = 0;
@@ -129,9 +171,64 @@ void profiler_run(void)
         }
     }
 }
+
+void profiler_init(void)
+{
+    printf("--------------------\\nPROFILER INIT\\n%ld\\n--------------------\\n",
+        GET_SYS_TICK_MS());
+
+    _profiler_print_cnt = 0;
+}
+
+void profiler_start(void)
+{
+    printf("--------------------\\nPROFILER START\\n%ld\\n--------------------\\n",
+        GET_SYS_TICK_MS());
+
+    _profiler_running = 1;    
+}
+
+void profiler_stop(void)
+{    
+    _profiler_running = 0;
+    printf("--------------------\\nPROFILER STOP\\n%ld\\n--------------------\\n",
+        GET_SYS_TICK_MS());
+}
+
 """
 
-    f.write(profiler_src)
+    fprofiler_c.write(profiler_c_src)
+
+
+    fprofiler_h = open("profiler.h", "w")    
+
+    profiler_h_src = """
+#pragma once
+
+#include <stdint.h>
+#include "app_macros.h"
+
+struct profiler_vars
+{
+"""
+
+    for entry in list_of_added_variables:
+        profiler_h_src += "    uint32_t " + entry + ";\n"
+
+    profiler_h_src += "} profiler_vars;\n\n"
+
+    profiler_h_src += """
+extern int profiler_recording;
+extern struct profiler_vars profiler_vars;
+
+void profiler_run(void);
+void profiler_init(void);
+void profiler_start(void);
+void profiler_stop(void);
+
+"""
+
+    fprofiler_h.write(profiler_h_src)
 
 
 if __name__ == '__main__':   
