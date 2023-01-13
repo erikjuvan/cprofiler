@@ -40,4 +40,11 @@ for l in extracted_lines:
     else:
         print("data {data} / variables {var} length mismatch".format(data = len(data), var = len(vars)))
 
-print(vars)
+# generate a matrix
+vars_matrix = [vars[i:i+6] for i in range(0, len(vars), 6)]
+
+# sort
+sort_cnt = sorted(vars_matrix, key=lambda x: x[0][-1])
+sort_avg = sorted(vars_matrix, key=lambda x: x[1][-1])
+
+a=0
