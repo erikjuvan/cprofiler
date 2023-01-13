@@ -72,7 +72,7 @@ def add_profiling_info_to_file(filename):
                             var_name = infilename + "_" + func_name + name
                             added_variables.append(var_name)
                             return var_name
-                        var_dur    = make_var("_dur")
+                        var_dur    = make_var("_dur_us")
                         var_accum  = make_var("_accum")
                         var_avg_accum = make_var("_avg_accum")
                         var_avg    = make_var("_avg")
