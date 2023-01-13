@@ -72,12 +72,12 @@ def add_profiling_info_to_file(filename):
                             var_name = infilename + "_" + func_name + name
                             added_variables.append(var_name)
                             return var_name
+                        var_cnt    = make_var("_cnt")
+                        var_avg    = make_var("_avg")
                         var_dur    = make_var("_dur_us")
+                        var_max    = make_var("_max")
                         var_accum  = make_var("_accum")
                         var_avg_accum = make_var("_avg_accum")
-                        var_avg    = make_var("_avg")
-                        var_max    = make_var("_max")
-                        var_cnt    = make_var("_cnt")
 
                         func_start = """    /// PROFILER ///
     static uint32_t _profiler_start = 0;
@@ -144,7 +144,9 @@ static void profiler_print_vars(void)
     uint32_t *p = (uint32_t *)&profiler_vars;    
     for (int i = 0; i < (sizeof(profiler_vars) / sizeof(uint32_t)); ++i, p++)
     {
-        printf("%ld,", *p);
+        WWDG->CR = 127;
+        IWDG->KR = 0x0000AAAAu;
+        printf("%ld,", *p);        
     }
     printf("\\n=====END %d\\n", _profiler_print_cnt);
     _profiler_print_cnt++;
