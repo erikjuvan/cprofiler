@@ -230,6 +230,11 @@ void profiler_stop(void);
 
     fprofiler_h.write(profiler_h_src)
 
+def generate_list_of_profiler_variables(list_of_added_variables):
+    f = open("profiler_vars.txt", "w")
+    for entry in list_of_added_variables:
+        f.write(entry + "\n")
+
 
 if __name__ == '__main__':   
 
@@ -251,4 +256,5 @@ if __name__ == '__main__':
         global_functions_variables.extend(add_profiling_info_to_file(arg_file))
 
     add_profiler_variables_to_new_file(global_functions_variables)
+    generate_list_of_profiler_variables(global_functions_variables)
     
