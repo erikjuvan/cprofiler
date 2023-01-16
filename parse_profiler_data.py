@@ -2,6 +2,7 @@
 import sys
 import re
 import os
+from pprint import pprint
 
 # read variable names
 profiler_vars_filename = "profiler_vars.txt"
@@ -29,8 +30,11 @@ for line in lines:
     elif start_found:
         extracted_lines.append(line.replace("\n", ""))
 
+# only look at the last entry, since it holds the most info
+lines_of_interest = [extracted_lines[-1]]
+
 # map data to variables
-for l in extracted_lines:
+for l in lines_of_interest:
     data = l.split(",")
     if len(data[len(data) - 1]) == 0:
         data.pop()
@@ -44,7 +48,10 @@ for l in extracted_lines:
 vars_matrix = [vars[i:i+6] for i in range(0, len(vars), 6)]
 
 # sort
-sort_cnt = sorted(vars_matrix, key=lambda x: x[0][-1])
-sort_avg = sorted(vars_matrix, key=lambda x: x[1][-1])
+sort_cnt = sorted(vars_matrix, key=lambda x: x[0][-1], reverse=True)
+sort_avg = sorted(vars_matrix, key=lambda x: x[1][-1], reverse=True)
 
-a=0
+print("AVERAGE")
+pprint(sort_avg[:10])
+print("\n\nCNT")
+pprint(sort_cnt[:10])
