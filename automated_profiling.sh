@@ -13,6 +13,7 @@ cp $objects_list $list_of_files_filename
 # transform file
 sed -i 's/^././' $list_of_files_filename # replace first character with '.'
 sed -i 's/.\{2\}$/c/' $list_of_files_filename # replace last 2 characters with 'c'
+sed -i '/Common\/profiler.c/d' $list_of_files_filename # remove potential profiler.c to not profile the profiler
 
 # split the files in that list into segments
 num_of_segments=3
