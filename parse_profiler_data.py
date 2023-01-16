@@ -4,8 +4,17 @@ import re
 import os
 from pprint import pprint
 
+command_line_args = sys.argv
+if not sys.stdin.isatty():
+    command_line_args.extend(sys.stdin.readlines())
+
+command_line_args.pop(0)
+
+if len(command_line_args) == 0:
+    exit(0)
+
 # read variable names
-profiler_vars_filename = "profiler_vars.txt"
+profiler_vars_filename = command_line_args[0]
 with open(profiler_vars_filename) as f:
     vars = []
     for line in f:
@@ -15,7 +24,7 @@ with open(profiler_vars_filename) as f:
 start_pattern = re.compile(r'=====BEGIN')
 end_pattern = re.compile(r'=====END')
 
-profiler_data_filename = "serial_data.txt"
+profiler_data_filename = command_line_args[1]
 with open(profiler_data_filename) as f:
     lines = f.readlines()
 
