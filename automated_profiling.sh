@@ -36,6 +36,9 @@ for i in $(seq 1 $num_of_segments); do
 
     # run the "add profiler code" script on files from script
     cat $current_file | xargs echo | python add_profiler_code.py
+    mv profiler.c profiler.h ../Common
+    # add pofiler.c to sources list so that make will build it
+    echo "\"./Common/profiler.o\"" >> ../STM32G0B1RE_PMCU/Debug/objects.list
 
     # rename the outputed profiler_vars.txt to something so we later know in what order were they (e.g. profiler_vars_1.txt)
     mv "profiler_vars.txt" "${output_dir}/profiler_vars_${i}.txt"
