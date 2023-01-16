@@ -136,8 +136,9 @@ int profiler_recording = 1;
 
 struct profiler_vars profiler_vars = {0};
 
-static int _profiler_running = 0;
-static int _profiler_print_cnt = 0;
+static uint32_t _profiler_running = 0;
+static uint32_t _profiler_start_ts = 0;
+static uint32_t _profiler_print_cnt = 0;
 
 typedef struct
 {
@@ -163,14 +164,12 @@ static void profiler_print_vars(void)
 
 void profiler_run(void)
 {
-    static uint32_t start = 0;
-
     if (!_profiler_running)
         return;
 
-    if (GET_ELAPSED_TIME_MS(start) > 60000)
+    if (GET_ELAPSED_TIME_MS(_profiler_start_ts) > 60000)
     {
-        start = GET_SYS_TICK_MS();
+        _profiler_start_ts = GET_SYS_TICK_MS();
         if (profiler_recording == 1)
         {
             profiler_recording = 0;
@@ -196,6 +195,7 @@ void profiler_start(void)
     printf("--------------------\\nPROFILER START\\n%ld\\n--------------------\\n",
         GET_SYS_TICK_MS());
 
+    _profiler_start_ts = GET_SYS_TICK_MS();
     _profiler_running = 1;    
 }
 
