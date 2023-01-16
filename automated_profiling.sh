@@ -26,13 +26,13 @@ done
 for i in $(seq 1 $num_of_segments); do
     current_file="${output_dir}/file_list_${i}.txt"
     echo "Processing $current_file"
-    # Do something with the current file here
 
     # git stage output_dir
-    git add ../$profiler_dir
+    git add .
 
-    # remove unstaged git changes (to put the project back to base state):
-    git clean -df && git checkout -- .
+    # discard unstaged git changes (to put the project back to base state):
+    git restore ..
+    git clean -df
 
     # run the "add profiler code" script on files from script
     cat $current_file | xargs echo | python add_profiler_code.py
