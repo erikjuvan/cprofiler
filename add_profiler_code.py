@@ -72,12 +72,13 @@ def add_profiling_info_to_file(filename):
                             var_name = infilename + "_" + func_name + name
                             added_variables.append(var_name)
                             return var_name
-                        var_cnt    = make_var("_cnt")
-                        var_avg    = make_var("_avg")
-                        var_dur    = make_var("_dur_us")
-                        var_max    = make_var("_max")
-                        var_accum  = make_var("_accum")
-                        var_avg_accum = make_var("_avg_accum")
+                        var_cnt = make_var("_cnt")
+                        var_avg = make_var("_avg")
+                        var_avg_last_16 = make_var("_avg_last_16")                        
+                        var_max = make_var("_max")
+                        var_dur_us = make_var("_dur_us")
+                        var_accum = make_var("_accum")
+                        var_accum_last_16 = make_var("_accum_last_16")
 
                         func_start = """    /// PROFILER ///
     static uint32_t _profiler_start = 0;
@@ -93,17 +94,17 @@ def add_profiling_info_to_file(filename):
     if (profiler_recording)
     {{
         profiler_vars.{vd} = GET_ELAPSED_TIME_US(_profiler_start);
-        profiler_vars.{vc}++;        
+        profiler_vars.{vc}++;
         profiler_vars.{vacc} += profiler_vars.{vd};
-        profiler_vars.{vavgacc} += profiler_vars.{vd};
+        profiler_vars.{vaccl16} += profiler_vars.{vd};
         if (profiler_vars.{vd} > profiler_vars.{vm}) profiler_vars.{vm} = profiler_vars.{vd};
         if ((profiler_vars.{vc} & 0xF) == 0)
         {{
-            profiler_vars.{vavg} = profiler_vars.{vavgacc} >> 4;
-            profiler_vars.{vavgacc} = 0;
+            profiler_vars.{vavgl16} = profiler_vars.{vaccl16} >> 4;
+            profiler_vars.{vaccl16} = 0;
         }}
     }}
-    ////////////////\n""".format(vd = var_dur, vacc = var_accum, vavgacc = var_avg_accum, vavg = var_avg, vm = var_max, vc = var_cnt)
+    ////////////////\n""".format(vd = var_dur_us, vc = var_cnt, vacc = var_accum, vaccl16 = var_accum_last_16, vavgl16 = var_avg_last_16, vm = var_max)
 
                         outfile.write(line)
                         outfile.write(func_start)
@@ -138,15 +139,23 @@ struct profiler_vars profiler_vars = {0};
 static int _profiler_running = 0;
 static int _profiler_print_cnt = 0;
 
+typedef struct
+{
+    uint32_t v[7]; // value
+} prof_func_data;
+
 static void profiler_print_vars(void)
 {    
     printf("=====BEGIN %d\\n", _profiler_print_cnt);
-    uint32_t *p = (uint32_t *)&profiler_vars;    
-    for (int i = 0; i < (sizeof(profiler_vars) / sizeof(uint32_t)); ++i, p++)
+    int size = sizeof(profiler_vars) / sizeof(prof_func_data);
+    prof_func_data *p = (prof_func_data *)&profiler_vars;
+    for (int i = 0; i < size; ++i, ++p)
     {
         WWDG->CR = 127;
         IWDG->KR = 0x0000AAAAu;
-        printf("%ld,", *p);        
+        p->v[1] = p->v[5] / p->v[0]; // calculate total average
+        printf("%ld,%ld,%ld,%ld,%ld,%ld,%ld,", 
+            p->v[0], p->v[1], p->v[2], p->v[3], p->v[4], p->v[5], p->v[6]);
     }
     printf("\\n=====END %d\\n", _profiler_print_cnt);
     _profiler_print_cnt++;
@@ -159,7 +168,7 @@ void profiler_run(void)
     if (!_profiler_running)
         return;
 
-    if (GET_ELAPSED_TIME_MS(start) > 1000)
+    if (GET_ELAPSED_TIME_MS(start) > 60000)
     {
         start = GET_SYS_TICK_MS();
         if (profiler_recording == 1)
@@ -247,7 +256,7 @@ if __name__ == '__main__':
     command_line_args.pop(0)
 
     if len(command_line_args) == 0:
-        exit(0)    
+        exit(0)
 
     list_of_input_files = command_line_args[0].replace("\n", "")
     list_of_input_files = list_of_input_files.split(" ")
