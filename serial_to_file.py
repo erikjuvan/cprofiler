@@ -11,7 +11,11 @@ ser = serial.Serial(command_line_args[0], command_line_args[1])
 
 with open("serial_data.txt", "w") as f:
     while True:
-        data = ser.readline() # Read data from the serial port
-        f.write(data) # Write data to file
+        data = ser.read(size=1)
+        try:
+            decoded_data = data.decode(errors='ignore')
+            f.write(decoded_data)
+        except Exception as e:
+            print(f"Error: {e}")
 
 ser.close() # Close the serial port
