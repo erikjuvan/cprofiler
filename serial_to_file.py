@@ -11,7 +11,7 @@ ser = serial.Serial(command_line_args[0], command_line_args[1])
 
 with open("serial_data.txt", "w") as f:
     while True:
-        data = ser.read(size=1)
+        data = ser.readline()
         try:
             decoded_data = data.decode(errors='ignore')
             f.write(decoded_data)
