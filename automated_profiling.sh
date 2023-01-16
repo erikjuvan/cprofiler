@@ -6,23 +6,24 @@ profiler_dir=$(pwd | awk -F / '{print $NF}')
 # generate/create a file with all the source filenames
 list_of_files_filename="file_list.txt"
 
-# split the files in that list into 10 segments/lists
+# split the files in that list into segments
+num_of_segments=3
 file=$list_of_files_filename
 lines=$(wc -l < $file)
-chunk_size=$(((lines+9)/10))
+chunk_size=$(((lines+$num_of_segments-1)/$num_of_segments))
 
 # put genarated files to separate directory
 output_dir=output
 mkdir -p $output_dir
 
-for i in {1..10}; do
+for i in $(seq 1 $num_of_segments); do
     start=$(((i-1)*chunk_size+1))
     end=$(($i*chunk_size))
     sed -n "${start},${end}p" $file > "${output_dir}/file_list_${i}.txt"
 done
 
 # loop
-for i in {1..10}; do
+for i in $(seq 1 $num_of_segments); do
     current_file="${output_dir}/file_list_${i}.txt"
     echo "Processing $current_file"
     # Do something with the current file here
