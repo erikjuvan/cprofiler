@@ -46,7 +46,7 @@ for i in $(seq 1 $num_of_segments); do
     cat $current_file | xargs echo | python add_profiler_code.py
     mv profiler.c profiler.h ../Common
     # add pofiler.c to sources list so that make will build it
-    grep -q "profiler.o" $objects_list
+    grep -q "./Common/profiler.o" $objects_list
     if [ $? -eq 1 ]; then
         echo "\"./Common/profiler.o\"" >> $objects_list
     fi
