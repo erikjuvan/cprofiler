@@ -1,10 +1,18 @@
 #!/bin/bash
 
+# specify build type
+build_type=Debug
+
 # get current working directory
 profiler_dir=$(pwd | awk -F / '{print $NF}')
 
 # generate/create a file with all the source filenames
+objects_list=../STM32G0B1RE_PMCU/$build_type/objects.list
 list_of_files_filename="file_list.txt"
+cp $objects_list $list_of_files_filename
+# transform file
+sed -i 's/^././' $list_of_files_filename # replace first character with '.'
+sed -i 's/.\{2\}$/c/' $list_of_files_filename # replace last 2 characters with 'c'
 
 # split the files in that list into segments
 num_of_segments=3
@@ -38,9 +46,9 @@ for i in $(seq 1 $num_of_segments); do
     cat $current_file | xargs echo | python add_profiler_code.py
     mv profiler.c profiler.h ../Common
     # add pofiler.c to sources list so that make will build it
-    grep -q "profiler.o" ../STM32G0B1RE_PMCU/Debug/objects.list
+    grep -q "profiler.o" $objects_list
     if [ $? -eq 1 ]; then
-        echo "\"./Common/profiler.o\"" >> ../STM32G0B1RE_PMCU/Debug/objects.list
+        echo "\"./Common/profiler.o\"" >> $objects_list
     fi
 
     # rename the outputed profiler_vars.txt to something so we later know in what order were they (e.g. profiler_vars_1.txt)
@@ -48,8 +56,8 @@ for i in $(seq 1 $num_of_segments); do
 
     # build project
     export PATH=$PATH:/c/ST/STM32CubeIDE_1.10.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.10.3-2021.10.win32_1.0.0.202111181127/tools/bin
-    cd ../STM32G0B1RE_PMCU/Debug/
-    make all
+    cd ../STM32G0B1RE_PMCU/$build_type/
+    make -j 8 all
 
     # program mcu
     export PATH=$PATH:/c/Program\ Files/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/
@@ -61,7 +69,8 @@ for i in $(seq 1 $num_of_segments); do
     #STM32_Programmer_CLI.exe -c SWD -run
 
     # start serial capture script and kill it after some time
-    timeout 65s python serial_to_file.py COM4 1000000
+    #timeout 65s python serial_to_file.py COM4 1000000
+    timeout 65s python serial_to_file.py /dev/ttyS3 1000000
 
     # rename saved data
     mv "serial_data.txt" "${output_dir}/serial_data_${i}.txt"
@@ -70,7 +79,7 @@ done
 
 # remove profiler.o from objects.list
 # do we actually need this, I don't think so but I'm still keeping it here
-sed -i '/profiler.o/d' ../STM32G0B1RE_PMCU/Debug/objects.list
+sed -i '/profiler.o/d' $objects_list
 
 # merge created files together
 cat $(ls $output_dir/profiler_vars_*.txt | sort -V) > $output_dir/profiler_vars_all.txt
