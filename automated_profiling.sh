@@ -41,7 +41,7 @@ for i in $(seq 1 $num_of_segments); do
     grep -q "profiler.o" ../STM32G0B1RE_PMCU/Debug/objects.list
     if [ $? -eq 1 ]; then
         echo "\"./Common/profiler.o\"" >> ../STM32G0B1RE_PMCU/Debug/objects.list
-    fi    
+    fi
 
     # rename the outputed profiler_vars.txt to something so we later know in what order were they (e.g. profiler_vars_1.txt)
     mv "profiler_vars.txt" "${output_dir}/profiler_vars_${i}.txt"
@@ -54,8 +54,7 @@ for i in $(seq 1 $num_of_segments); do
     # program mcu
     export PATH=$PATH:/c/Program\ Files/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/
     cd -
-    cd ..
-    merged_hex=$(find output/ -type f -name '*.hex' -mtime -1)
+    merged_hex=$(find ../output/ -type f -name '*.hex' -mmin -2)
     STM32_Programmer_CLI.exe -c port=SWD -e all
     STM32_Programmer_CLI.exe -c port=SWD -w $merged_hex -v
     STM32_Programmer_CLI.exe -c port=SWD -rst
@@ -68,6 +67,10 @@ for i in $(seq 1 $num_of_segments); do
     mv "serial_data.txt" "${output_dir}/serial_data_${i}.txt"
 
 done
+
+# remove profiler.o from objects.list
+# do we actually need this, I don't think so but I'm still keeping it here
+sed -i '/profiler.o/d' ../STM32G0B1RE_PMCU/Debug/objects.list
 
 # merge created files together
 cat $(ls $output_dir/profiler_vars_*.txt | sort -V) > $output_dir/profiler_vars_all.txt
