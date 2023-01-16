@@ -34,27 +34,28 @@ for i in {1..10}; do
     git clean -df && git checkout -- .
 
     # run the "add profiler code" script on files from script
-    cat current_file | xargs echo | python add_profiler_code.py
+    cat $current_file | xargs echo | python add_profiler_code.py
 
     # rename the outputed profiler_vars.txt to something so we later know in what order were they (e.g. profiler_vars_1.txt)
     mv "profiler_vars.txt" "${output_dir}/profiler_vars_${i}.txt"
 
     # build project
     export PATH=$PATH:/c/ST/STM32CubeIDE_1.10.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.10.3-2021.10.win32_1.0.0.202111181127/tools/bin
-    cd STM32G0B1RE_PMCU/Debug/
+    cd ../STM32G0B1RE_PMCU/Debug/
     make all
 
     # program mcu
     export PATH=$PATH:/c/Program\ Files/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/
     cd -
+    cd ..
     merged_hex=$(find output/ -type f -name '*.hex' -mtime -1)
-    STM32_Programmer_CLI.exe -c SWD -e all
-    STM32_Programmer_CLI.exe -c SWD -w $merged_hex -v
-    STM32_Programmer_CLI.exe -c SWD -rst
+    STM32_Programmer_CLI.exe -c port=SWD -e all
+    STM32_Programmer_CLI.exe -c port=SWD -w $merged_hex -v
+    STM32_Programmer_CLI.exe -c port=SWD -rst
     #STM32_Programmer_CLI.exe -c SWD -run
 
     # start serial capture script and kill it after some time
-    timeout 65s python serial_to_file.py
+    timeout 65s python serial_to_file.py COM4 1000000
 
     # rename saved data
     mv "serial_data.txt" "${output_dir}/serial_data_${i}.txt"
@@ -62,5 +63,5 @@ for i in {1..10}; do
 done
 
 # merge created files together
-cat $(ls prof_out/profiler_vars_*.txt | sort -V) > prof_out/profiler_vars_all.txt
-cat $(ls prof_out/serial_data_*.txt | sort -V) > prof_out/serial_data_all.txt
+cat $(ls $output_dir/profiler_vars_*.txt | sort -V) > $output_dir/profiler_vars_all.txt
+cat $(ls $output_dir/serial_data_*.txt | sort -V) > $output_dir/serial_data_all.txt
