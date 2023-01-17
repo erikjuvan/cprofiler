@@ -7,6 +7,8 @@ def add_profiling_info_to_file(filename):
     infilename = filename
     outfilename = filename + ".profiled"
 
+    print(filename)
+
     #with open(filename, "r", encoding='unicode_escape') as infile, open(outfilename, "w") as outfile:
     with open(filename, "r") as infile, open(outfilename, "w") as outfile:
         cnt  = 0
@@ -213,8 +215,7 @@ void profiler_stop(void)
 
     fprofiler_h = open("profiler.h", "w")    
 
-    profiler_h_src = """
-#pragma once
+    profiler_h_src = """#pragma once
 
 #include <stdint.h>
 #include "app_macros.h"
