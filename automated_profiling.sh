@@ -28,7 +28,7 @@ sed -i '/STM32G0xx_HAL_Driver/d' $list_of_files_file # Replace Drivers directory
 sed -i '/Middlewares/d' $list_of_files_file # Replace Drivers directory with the full path
 
 # split the files in that list into segments
-num_of_segments=4
+num_of_segments=5
 lines=$(wc -l < $list_of_files_file)
 chunk_size=$(((lines+$num_of_segments-1)/$num_of_segments))
 
