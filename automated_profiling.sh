@@ -13,25 +13,43 @@ script_dir=$(pwd | awk -F / '{print $NF}')
 output_dir=output
 mkdir -p $output_dir
 
-# generate/create a file with all the source filenames
-objects_list=../STM32G0B1RE_PMCU/$build_type/objects.list
+# file where all files to be processed will be listed
 list_of_files_file=$output_dir/file_list.txt
-cp $objects_list $list_of_files_file
-# transform file
-sed -i 's/^././' $list_of_files_file # replace first character with '.'
-sed -i 's/.\{2\}$/c/' $list_of_files_file # replace last 2 characters with 'c'
-sed -i '/Common\/profiler.c/d' $list_of_files_file # remove potential profiler.c to not profile the profiler
-sed -i 's/\/Core\/Src\//\/STM32G0B1RE_PMCU\/Core\/Src\//' $list_of_files_file # Replace core directory with the full path
-# remove files that we are not interested in
-sed -i '/\/Startup\//d' $list_of_files_file # remove startup files which in the case of this writting is assembly
-sed -i '/STM32G0xx_HAL_Driver/d' $list_of_files_file # Replace Drivers directory with the full path
-sed -i '/Middlewares/d' $list_of_files_file # Replace Drivers directory with the full path
 
-# split the files in that list into segments
-num_of_segments=5
+# Source file where all objects files are listed
+objects_list=../STM32G0B1RE_PMCU/$build_type/objects.list
+
+# If no arguments are passed then files will be generated form objects_list
+# otherwise the command line arguments will be used as files to be used
+if [ $# -eq 0 ]
+then
+    # No arguments supplied
+
+    # generate/create a file with all the source filenames    
+    cp $objects_list $list_of_files_file
+    # transform file
+    sed -i 's/^././' $list_of_files_file # replace first character with '.'
+    sed -i 's/.\{2\}$/c/' $list_of_files_file # replace last 2 characters with 'c'
+    sed -i '/Common\/profiler.c/d' $list_of_files_file # remove potential profiler.c to not profile the profiler
+    sed -i 's/\/Core\/Src\//\/STM32G0B1RE_PMCU\/Core\/Src\//' $list_of_files_file # Replace core directory with the full path
+    # remove files that we are not interested in
+    sed -i '/\/Startup\//d' $list_of_files_file # remove startup files which in the case of this writting is assembly
+    sed -i '/STM32G0xx_HAL_Driver/d' $list_of_files_file # Replace Drivers directory with the full path
+    sed -i '/Middlewares/d' $list_of_files_file # Replace Drivers directory with the full path
+
+    # split the files in that list into segments
+    num_of_segments=5
+    
+else
+    num_of_segments=1
+    echo -e "$@" | tr ' ' '\n' > $list_of_files_file
+fi
+
+# Calculate chunk size
 lines=$(wc -l < $list_of_files_file)
 chunk_size=$(((lines+$num_of_segments-1)/$num_of_segments))
 
+# Generate file_lists
 for i in $(seq 1 $num_of_segments); do
     start=$(((i-1)*chunk_size+1))
     end=$(($i*chunk_size))
