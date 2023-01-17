@@ -28,7 +28,7 @@ sed -i '/STM32G0xx_HAL_Driver/d' $list_of_files_file # Replace Drivers directory
 sed -i '/Middlewares/d' $list_of_files_file # Replace Drivers directory with the full path
 
 # split the files in that list into segments
-num_of_segments=1
+num_of_segments=4
 lines=$(wc -l < $list_of_files_file)
 chunk_size=$(((lines+$num_of_segments-1)/$num_of_segments))
 
@@ -71,7 +71,7 @@ for i in $(seq 1 $num_of_segments); do
     # program mcu
     export PATH=$PATH:/c/Program\ Files/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/
     cd -
-    merged_hex=$(find ../output/ -type f -name '*.hex' -mmin -2)
+    merged_hex=$(find ../output/ -type f -name '*.hex' -mmin -2 -printf '%T@ %p\n' | sort -n | tail -1 | cut -f2- -d" ")
     STM32_Programmer_CLI.exe -c port=SWD -e all
     STM32_Programmer_CLI.exe -c port=SWD -w $merged_hex -v
     STM32_Programmer_CLI.exe -c port=SWD -rst
@@ -79,7 +79,7 @@ for i in $(seq 1 $num_of_segments); do
 
     # start serial capture script and kill it after some time
     #timeout 65s python serial_to_file.py COM4 1000000
-    timeout 65s python serial_to_file.py /dev/ttyS3 1000000
+    timeout 75s python serial_to_file.py /dev/ttyS3 1000000
 
     # rename saved data
     mv "serial_data.txt" "${output_dir}/serial_data_${i}.txt"

@@ -15,7 +15,9 @@ with open("serial_data.txt", "w") as f:
         try:
             decoded_data = data.decode(errors='ignore')
             f.write(decoded_data)
+            f.flush()
+            print(decoded_data)
         except Exception as e:
-            print(f"Error: {e}")
+            print("Error: {e}")
 
 ser.close() # Close the serial port
