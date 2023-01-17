@@ -21,9 +21,11 @@ cp $objects_list $list_of_files_file
 sed -i 's/^././' $list_of_files_file # replace first character with '.'
 sed -i 's/.\{2\}$/c/' $list_of_files_file # replace last 2 characters with 'c'
 sed -i '/Common\/profiler.c/d' $list_of_files_file # remove potential profiler.c to not profile the profiler
-sed -i '/\/Startup\//d' $list_of_files_file # remove startup files which in the case of this writting is assembly
 sed -i 's/\/Core\/Src\//\/STM32G0B1RE_PMCU\/Core\/Src\//' $list_of_files_file # Replace core directory with the full path
-sed -i 's/\/Drivers\//\/STM32G0B1RE_PMCU\/Drivers\//' $list_of_files_file # Replace Drivers directory with the full path
+# remove files that we are not interested in
+sed -i '/\/Startup\//d' $list_of_files_file # remove startup files which in the case of this writting is assembly
+sed -i '/STM32G0xx_HAL_Driver/d' $list_of_files_file # Replace Drivers directory with the full path
+sed -i '/Middlewares/d' $list_of_files_file # Replace Drivers directory with the full path
 
 # split the files in that list into segments
 num_of_segments=1
