@@ -1,45 +1,51 @@
 #!/bin/bash
 
+# echo every line and expand variables and prints a little + sign before the line
+set -x
+
 # specify build type
 build_type=Debug
 
 # get current working directory
-profiler_dir=$(pwd | awk -F / '{print $NF}')
-
-# generate/create a file with all the source filenames
-objects_list=../STM32G0B1RE_PMCU/$build_type/objects.list
-list_of_files_filename="file_list.txt"
-cp $objects_list $list_of_files_filename
-# transform file
-sed -i 's/^././' $list_of_files_filename # replace first character with '.'
-sed -i 's/.\{2\}$/c/' $list_of_files_filename # replace last 2 characters with 'c'
-sed -i '/Common\/profiler.c/d' $list_of_files_filename # remove potential profiler.c to not profile the profiler
-
-# split the files in that list into segments
-num_of_segments=3
-file=$list_of_files_filename
-lines=$(wc -l < $file)
-chunk_size=$(((lines+$num_of_segments-1)/$num_of_segments))
+script_dir=$(pwd | awk -F / '{print $NF}')
 
 # put genarated files to separate directory
 output_dir=output
 mkdir -p $output_dir
 
+# generate/create a file with all the source filenames
+objects_list=../STM32G0B1RE_PMCU/$build_type/objects.list
+list_of_files_file=$output_dir/file_list.txt
+cp $objects_list $list_of_files_file
+# transform file
+sed -i 's/^././' $list_of_files_file # replace first character with '.'
+sed -i 's/.\{2\}$/c/' $list_of_files_file # replace last 2 characters with 'c'
+sed -i '/Common\/profiler.c/d' $list_of_files_file # remove potential profiler.c to not profile the profiler
+sed -i '/\/Startup\//d' $list_of_files_file # remove startup files which in the case of this writting is assembly
+sed -i 's/\/Core\/Src\//\/STM32G0B1RE_PMCU\/Core\/Src\//' $list_of_files_file # Replace core directory with the full path
+sed -i 's/\/Drivers\//\/STM32G0B1RE_PMCU\/Drivers\//' $list_of_files_file # Replace Drivers directory with the full path
+
+# split the files in that list into segments
+num_of_segments=1
+lines=$(wc -l < $list_of_files_file)
+chunk_size=$(((lines+$num_of_segments-1)/$num_of_segments))
+
 for i in $(seq 1 $num_of_segments); do
     start=$(((i-1)*chunk_size+1))
     end=$(($i*chunk_size))
-    sed -n "${start},${end}p" $file > "${output_dir}/file_list_${i}.txt"
+    sed -n "${start},${end}p" $list_of_files_file > "${output_dir}/file_list_${i}.txt"
 done
 
 # loop
 for i in $(seq 1 $num_of_segments); do
-    current_file="${output_dir}/file_list_${i}.txt"
+    current_file=$output_dir/file_list_$i.txt
     echo "Processing $current_file"
 
-    # git stage output_dir
-    git add .
+    # git stage current dir and everything in it (output_dir - so we keep the generated data during loop runs)
+    git add .    
 
     # discard unstaged git changes (to put the project back to base state):
+    git submodule foreach --quiet --recursive git restore . --quiet
     git restore ..
     git clean -df
 
@@ -85,3 +91,6 @@ sed -i '/profiler.o/d' $objects_list
 # merge created files together
 cat $(ls $output_dir/profiler_vars_*.txt | sort -V) > $output_dir/profiler_vars_all.txt
 cat $(ls $output_dir/serial_data_*.txt | sort -V) > $output_dir/serial_data_all.txt
+
+# turn of echo every line
+set +x
