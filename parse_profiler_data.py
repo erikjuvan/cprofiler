@@ -53,19 +53,19 @@ for l in lines_of_interest:
     else:
         print("data {data} / variables {var} length mismatch".format(data = len(data), var = len(vars)))
 
-number_of_vars = 7
+number_of_vars = 1
 
 # generate a matrix
 vars_matrix = [vars[i:i+number_of_vars] for i in range(0, len(vars), number_of_vars)]
 
 # sort
 sort_cnt = sorted(vars_matrix, key=lambda x: x[0][-1], reverse=True)
-sort_avg = sorted(vars_matrix, key=lambda x: x[1][-1], reverse=True)
-sort_accum = sorted(vars_matrix, key=lambda x: x[5][-1], reverse=True)
+#sort_avg = sorted(vars_matrix, key=lambda x: x[1][-1], reverse=True)
+#sort_accum = sorted(vars_matrix, key=lambda x: x[5][-1], reverse=True)
 
-print("AVERAGE")
-pprint(sort_avg[:30])
+#print("AVERAGE")
+#pprint(sort_avg[:30])
 print("\n\nCNT")
-pprint(sort_cnt[:30])
-print("\n\nACCUM")
-pprint(sort_accum[:30])
+pprint(sort_cnt)
+#print("\n\nACCUM")
+#pprint(sort_accum[:30])

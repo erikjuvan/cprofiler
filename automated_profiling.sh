@@ -38,7 +38,7 @@ then
     sed -i '/Middlewares/d' $list_of_files_file # Replace Drivers directory with the full path
 
     # split the files in that list into segments
-    num_of_segments=5
+    num_of_segments=1
     
 else
     num_of_segments=1

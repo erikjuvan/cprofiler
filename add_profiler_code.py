@@ -99,39 +99,14 @@ def add_profiling_info_to_file(filename):
                             added_variables.append(var_name)
                             return var_name
                         var_cnt = make_var("_cnt")
-                        var_avg = make_var("_avg")
-                        var_avg_last_16 = make_var("_avg_last_16")                        
-                        var_max = make_var("_max")
-                        var_dur_us = make_var("_dur_us")
-                        var_accum = make_var("_accum")
-                        var_accum_last_16 = make_var("_accum_last_16")
                         variable_counter += 1
 
-                        func_start = """    /// PROFILER ///
-    static uint32_t _profiler_start = 0;
-    if (profiler_recording)
-    {        
-        _profiler_start = GET_SYS_TICK_US();
-    }
-    ////////////////
-    \n"""
+                        func_start = """"""
 
                         func_end = """
     /// PROFILER ///
-    if (profiler_recording)
-    {{
-        profiler_vars.{vd} = GET_ELAPSED_TIME_US(_profiler_start);
-        profiler_vars.{vc}++;
-        profiler_vars.{vacc} += profiler_vars.{vd};
-        profiler_vars.{vaccl16} += profiler_vars.{vd};
-        if (profiler_vars.{vd} > profiler_vars.{vm}) profiler_vars.{vm} = profiler_vars.{vd};
-        if ((profiler_vars.{vc} & 0xF) == 0)
-        {{
-            profiler_vars.{vavgl16} = profiler_vars.{vaccl16} >> 4;
-            profiler_vars.{vaccl16} = 0;
-        }}
-    }}
-    ////////////////\n""".format(vd = var_dur_us, vc = var_cnt, vacc = var_accum, vaccl16 = var_accum_last_16, vavgl16 = var_avg_last_16, vm = var_max)
+    profiler_vars.{vc}++;
+    ////////////////\n""".format(vc = var_cnt)
 
                         outfile.write(line)
                         outfile.write(func_start)
@@ -171,7 +146,7 @@ static uint32_t _profiler_print_cnt = 0;
 
 typedef struct
 {
-    uint32_t v[7]; // value
+    uint32_t v; // value
 } prof_func_data;
 
 static void profiler_print_vars(void)
@@ -183,9 +158,7 @@ static void profiler_print_vars(void)
     {
         WWDG->CR = 127;
         IWDG->KR = 0x0000AAAAu;
-        p->v[1] = p->v[5] / p->v[0]; // calculate total average
-        printf("%ld,%ld,%ld,%ld,%ld,%ld,%ld,", 
-            p->v[0], p->v[1], p->v[2], p->v[3], p->v[4], p->v[5], p->v[6]);
+        printf("%ld,", p->v);
     }
     printf("\\n=====END %ld\\n", _profiler_print_cnt);
     _profiler_print_cnt++;
