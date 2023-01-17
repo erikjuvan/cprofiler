@@ -26,10 +26,11 @@ def add_profiling_info_to_file(filename):
 
         outfile.write("#include \"profiler.h\"\n\n")
 
-        lines = []
+        lines_history = []
+
         for line in infile:
 
-            lines.append(line)
+            lines_history.append(line)
 
             # check if the line is a comment "//"
             match = re.search(r"^\s*\/\/", line)
@@ -50,7 +51,7 @@ def add_profiling_info_to_file(filename):
                 if cnt == 1:
                     match_found = False
                     prev_line_lookups = 0
-                    for l in reversed(lines):
+                    for l in reversed(lines_history):
 
                         # remove any text following '{'
                         if "{" in l:
