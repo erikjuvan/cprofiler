@@ -3,7 +3,10 @@ import sys
 import re
 import os
 
+variable_counter = 1
+
 def add_profiling_info_to_file(filename):
+    global variable_counter
     infilename = filename
     outfilename = filename + ".profiled"
 
@@ -27,7 +30,7 @@ def add_profiling_info_to_file(filename):
         outfile.write("#include \"profiler.h\"\n\n")
 
         lines_history = []
-
+        write_func_end_to_outfile = False
         for line in infile:
 
             lines_history.append(line)
@@ -42,7 +45,8 @@ def add_profiling_info_to_file(filename):
                 outfile.write(line)
                 continue
         
-            if "{" in line and "}" in line: # case when "{}"
+            # case when "{}"
+            if "{" in line and "}" in line:
                 outfile.write(line)
                 continue
 
@@ -53,26 +57,45 @@ def add_profiling_info_to_file(filename):
                     prev_line_lookups = 0
                     for l in reversed(lines_history):
 
+                        # check if the line contains an = sign
+                        match = re.search(r"=", l)
+                        if match:
+                            break
+
+                        # check if the line is a preprocessor directive "# "
+                        match = re.search(r"^\s*#", l)
+                        if match:
+                            break
+
+                        # check if the line is part of the preprocessor (last character is \)
+                        match = re.search(r"\\$", l)
+                        if match:
+                            break
+
+                        # check if the line contains an = sign
+                        if "typedef" in l:
+                            break
+
                         # remove any text following '{'
                         if "{" in l:
                             l = l[:l.index('{')]
 
                         # regex to find function name
-                        match = re.search(r"\s(\w+)\([^(]*$", l)
+                        match = re.search(r"\s*(\w+)\s*\([^(]*$", l)
                         if match:
                             if "sizeof" not in l: # if there is a match make sure it is not a sizeof function
                                 match_found = True
                                 break
 
-                        # don't look more than 3 previous lines
+                        # don't look more than n previous lines
                         prev_line_lookups += 1
-                        if prev_line_lookups >= 3:
+                        if prev_line_lookups >= 7:
                             break
 
                     if match_found:
                         func_name = match.group(1)
                         def make_var(name):
-                            var_name = infilename + "_" + func_name + name
+                            var_name = "_" + str(variable_counter) + "_" + infilename + "_" + func_name + name
                             added_variables.append(var_name)
                             return var_name
                         var_cnt = make_var("_cnt")
@@ -82,6 +105,7 @@ def add_profiling_info_to_file(filename):
                         var_dur_us = make_var("_dur_us")
                         var_accum = make_var("_accum")
                         var_accum_last_16 = make_var("_accum_last_16")
+                        variable_counter += 1
 
                         func_start = """    /// PROFILER ///
     static uint32_t _profiler_start = 0;
@@ -111,14 +135,16 @@ def add_profiling_info_to_file(filename):
 
                         outfile.write(line)
                         outfile.write(func_start)
+                        write_func_end_to_outfile = True
                         continue
 
             if "}" in line:
                 cnt -= 1
-                if cnt == 0:
+                if cnt == 0 and write_func_end_to_outfile == True:
                     outfile.write(func_end)
                     outfile.write(line)
-                    continue                
+                    write_func_end_to_outfile = False
+                    continue
 
             outfile.write(line)
 
@@ -150,7 +176,7 @@ typedef struct
 
 static void profiler_print_vars(void)
 {    
-    printf("=====BEGIN %d\\n", _profiler_print_cnt);
+    printf("=====BEGIN %ld\\n", _profiler_print_cnt);
     int size = sizeof(profiler_vars) / sizeof(prof_func_data);
     prof_func_data *p = (prof_func_data *)&profiler_vars;
     for (int i = 0; i < size; ++i, ++p)
@@ -161,7 +187,7 @@ static void profiler_print_vars(void)
         printf("%ld,%ld,%ld,%ld,%ld,%ld,%ld,", 
             p->v[0], p->v[1], p->v[2], p->v[3], p->v[4], p->v[5], p->v[6]);
     }
-    printf("\\n=====END %d\\n", _profiler_print_cnt);
+    printf("\\n=====END %ld\\n", _profiler_print_cnt);
     _profiler_print_cnt++;
 }
 
