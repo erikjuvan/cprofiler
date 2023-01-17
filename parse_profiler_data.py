@@ -53,8 +53,10 @@ for l in lines_of_interest:
     else:
         print("data {data} / variables {var} length mismatch".format(data = len(data), var = len(vars)))
 
+number_of_vars = 7
+
 # generate a matrix
-vars_matrix = [vars[i:i+6] for i in range(0, len(vars), 6)]
+vars_matrix = [vars[i:i+number_of_vars] for i in range(0, len(vars), number_of_vars)]
 
 # sort
 sort_cnt = sorted(vars_matrix, key=lambda x: x[0][-1], reverse=True)
