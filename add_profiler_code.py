@@ -224,11 +224,11 @@ void profiler_end(void)
 #include <stdint.h>
 #include <stm32g0xx_hal.h>
 
-#define PROFILER_GET_US() TIM7->CNT
-#define PROFILER_GET_ELAPSED_US(start) ((uint16_t)PROFILER_GET_US() - (uint16_t)start)
+#define PROFILER_GET_US() ((uint16_t)TIM7->CNT)
+#define PROFILER_GET_ELAPSED_US(start) ((uint16_t)(PROFILER_GET_US() - (uint16_t)start))
 
-#define PROFILER_GET_MS() TIM2->CNT
-#define PROFILER_GET_ELAPSED_MS(start) ((uint32_t)PROFILER_GET_MS() - (uint32_t)start)
+#define PROFILER_GET_MS() ((uint32_t)TIM2->CNT)
+#define PROFILER_GET_ELAPSED_MS(start) ((uint32_t)(PROFILER_GET_MS() - (uint32_t)start))
 
 struct profiler_vars
 {
