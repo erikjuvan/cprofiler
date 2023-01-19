@@ -99,14 +99,23 @@ def add_profiling_info_to_file(filename):
                             added_variables.append(var_name)
                             return var_name
                         var_cnt = make_var("_cnt")
+                        var_accum = make_var("_accum")
+
                         variable_counter += 1
 
-                        func_start = """"""
+                        func_start = """
+    /// PROFILER ///
+    uint16_t _profiler_start = PROFILER_GET_US();
+    ////////////////\n"""
 
                         func_end = """
     /// PROFILER ///
-    profiler_vars.{vc}++;
-    ////////////////\n""".format(vc = var_cnt)
+    if (profiler_running)
+    {{
+        profiler_vars.{vc}++;
+        profiler_vars.{vacc} += PROFILER_GET_ELAPSED_US(_profiler_start);
+    }}
+    ////////////////\n""".format(vc = var_cnt, vacc = var_accum)
 
                         outfile.write(line)
                         outfile.write(func_start)
@@ -133,79 +142,71 @@ def add_profiler_variables_to_new_file(list_of_added_variables):
     fprofiler_c = open("profiler.c", "w")
 
     profiler_c_src = """#include <stdint.h>
+#include <string.h>
 #include "trace.h"
 #include "profiler.h"
 
-int profiler_recording = 1;
+char profiler_running = 0;
 
 struct profiler_vars profiler_vars = {0};
 
-static uint32_t _profiler_running = 0;
-static uint32_t _profiler_start_ts = 0;
-static uint32_t _profiler_print_cnt = 0;
+static char _run_marker = 0;
+static char _profiler_alive = 1;
 
 typedef struct
 {
-    uint32_t v; // value
+    uint32_t v[2]; // value
 } prof_func_data;
 
-static void profiler_print_vars(void)
-{    
-    printf("=====BEGIN %ld\\n", _profiler_print_cnt);
+static void _profiler_print(void)
+{
+    printf("===START %c\\n", _run_marker);
+    // print all data
     int size = sizeof(profiler_vars) / sizeof(prof_func_data);
     prof_func_data *p = (prof_func_data *)&profiler_vars;
     for (int i = 0; i < size; ++i, ++p)
     {
         WWDG->CR = 127;
         IWDG->KR = 0x0000AAAAu;
-        printf("%ld,", p->v);
+        printf("%ld,%ld,", p->v[0], p->v[1]);
     }
-    printf("\\n=====END %ld\\n", _profiler_print_cnt);
-    _profiler_print_cnt++;
+    printf("===STOP %c\\n", _run_marker);
 }
 
-void profiler_run(void)
+// clear profiler_vars to 0
+static void _profiler_memclear(void)
 {
-    if (!_profiler_running)
-        return;
+    memset(&profiler_vars, 0, sizeof(profiler_vars));
+}
 
-    if (GET_ELAPSED_TIME_MS(_profiler_start_ts) > 60000)
+void profiler_start(char marker)
+{
+    if (_profiler_alive && !profiler_running && _run_marker == 0 && marker != 0)
     {
-        _profiler_start_ts = GET_SYS_TICK_MS();
-        if (profiler_recording == 1)
-        {
-            profiler_recording = 0;
-            profiler_print_vars();
-        }
-        else
-        {
-            profiler_recording = 1;
-        }
+        _profiler_memclear();
+        _run_marker = marker;
+        profiler_running = 1;
+    }     
+}
+
+void profiler_stop(char marker)
+{    
+    if (profiler_running && marker == _run_marker)
+    {
+        profiler_running = 0;
+        _profiler_print();
+        _run_marker = 0;
     }
 }
 
-void profiler_init(void)
+void profiler_end(void)
 {
-    printf("--------------------\\nPROFILER INIT\\n%ld\\n--------------------\\n",
-        GET_SYS_TICK_MS());
-
-    _profiler_print_cnt = 0;
-}
-
-void profiler_start(void)
-{
-    printf("--------------------\\nPROFILER START\\n%ld\\n--------------------\\n",
-        GET_SYS_TICK_MS());
-
-    _profiler_start_ts = GET_SYS_TICK_MS();
-    _profiler_running = 1;    
-}
-
-void profiler_stop(void)
-{    
-    _profiler_running = 0;
-    printf("--------------------\\nPROFILER STOP\\n%ld\\n--------------------\\n",
-        GET_SYS_TICK_MS());
+    if (_profiler_alive)
+    {
+        _profiler_alive = 0;
+        profiler_stop(_run_marker);
+        printf("===END\\n");
+    }
 }
 
 """
@@ -220,6 +221,12 @@ void profiler_stop(void)
 #include <stdint.h>
 #include "app_macros.h"
 
+#define PROFILER_GET_US() TIM7->CNT
+#define PROFILER_GET_ELAPSED_US(start) PROFILER_GET_US() - start
+
+#define PROFILER_GET_MS() TIM2->CNT
+#define PROFILER_GET_ELAPSED_MS(start) PROFILER_GET_MS() - start
+
 struct profiler_vars
 {
 """
@@ -230,13 +237,12 @@ struct profiler_vars
     profiler_h_src += "} profiler_vars;\n\n"
 
     profiler_h_src += """
-extern int profiler_recording;
+extern char profiler_running;
 extern struct profiler_vars profiler_vars;
 
-void profiler_run(void);
-void profiler_init(void);
-void profiler_start(void);
-void profiler_stop(void);
+void profiler_start(char marker);
+void profiler_stop(char marker);
+void profiler_end(void);
 
 """
 

@@ -93,11 +93,9 @@ for i in $(seq 1 $num_of_segments); do
     STM32_Programmer_CLI.exe -c port=SWD -e all
     STM32_Programmer_CLI.exe -c port=SWD -w $merged_hex -v
     STM32_Programmer_CLI.exe -c port=SWD -rst
-    #STM32_Programmer_CLI.exe -c SWD -run
 
-    # start serial capture script and kill it after some time
-    #timeout 65s python serial_to_file.py COM4 1000000
-    timeout 75s python serial_to_file.py /dev/ttyS3 1000000
+    # start serial capture script, it will terminate on its own
+    python serial_to_file.py /dev/ttyS3 1000000
 
     # rename saved data
     mv "serial_data.txt" "${output_dir}/serial_data_${i}.txt"

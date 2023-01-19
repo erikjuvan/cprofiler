@@ -17,6 +17,8 @@ with open("serial_data.txt", "w") as f:
             f.write(decoded_data)
             f.flush()
             print(decoded_data)
+            if "===END" in decoded_data:
+                break
         except Exception as e:
             print("Error: {e}")
 
