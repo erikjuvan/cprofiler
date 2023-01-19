@@ -219,6 +219,7 @@ void profiler_end(void)
     profiler_h_src = """#pragma once
 
 #include <stdint.h>
+#include <stm32g0xx_hal.h>
 
 #define PROFILER_GET_US() TIM7->CNT
 #define PROFILER_GET_ELAPSED_US(start) ((uint16_t)PROFILER_GET_US() - (uint16_t)start)
