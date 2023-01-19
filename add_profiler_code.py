@@ -168,7 +168,7 @@ static void _profiler_print(void)
     {
         WWDG->CR = 127;
         IWDG->KR = 0x0000AAAAu;
-        printf("%ld,%ld,", p->v[0], p->v[1]);
+        printf("%lu,%lu,", p->v[0], p->v[1]);
     }
     printf("\\n===STOP %c\\n", _run_marker);
 }
@@ -183,7 +183,7 @@ void profiler_start(char marker)
 {
     if (_profiler_alive && !profiler_running && _run_marker == 0 && marker != 0)
     {
-        printf("\\n%ld Profiler start %c\\n", PROFILER_GET_MS(), marker);
+        printf("\\n%lu Profiler start %c\\n", PROFILER_GET_MS(), marker);
         _profiler_memclear();
         _run_marker = marker;
         profiler_running = 1;
@@ -195,7 +195,7 @@ void profiler_stop(char marker)
     if (profiler_running && marker == _run_marker)
     {
         profiler_running = 0;
-        printf("\\n%ld Profiler stop %c\\n", PROFILER_GET_MS(), marker);
+        printf("\\n%lu Profiler stop %c\\n", PROFILER_GET_MS(), marker);
         _profiler_print();
         _run_marker = 0;
     }
