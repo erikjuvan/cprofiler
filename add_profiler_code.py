@@ -112,8 +112,8 @@ def add_profiling_info_to_file(filename):
     /// PROFILER ///
     if (profiler_running)
     {{
-        profiler_vars.{vc}++;
         profiler_vars.{vacc} += PROFILER_GET_ELAPSED_US(_profiler_start);
+        profiler_vars.{vc}++;
     }}
     ////////////////\n""".format(vc = var_cnt, vacc = var_accum)
 
