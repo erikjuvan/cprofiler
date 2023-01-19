@@ -106,6 +106,24 @@ done
 # do we actually need this, I don't think so but I'm still keeping it here
 sed -i '/profiler.o/d' $objects_list
 
+# merge created files together, but first check if file already exsists and add sequential number if it exsists
+find_nonexsistent_filename() {
+    if [[ -e $1.txt || -L $1.txt ]] ; then
+        i=1
+        while [[ -e $1_$i.txt || -L $1_$i.txt ]] ; do
+            let i++
+        done
+        name=$1_$i
+    fi
+    echo $name.txt  
+}
+
+# merge created files together, but don't overwrite existing files but instead create a new one
+# prof_vars_fname=$(find_nonexsistent_filename $output_dir/profiler_vars_all)
+# ser_data_fname=$(find_nonexsistent_filename $output_dir/serial_data_all)
+# cat $(ls $output_dir/profiler_vars_*.txt | sort -V) > $prof_vars_fname
+# cat $(ls $output_dir/serial_data_*.txt | sort -V) > $ser_data_fname
+
 # merge created files together
 cat $(ls $output_dir/profiler_vars_*.txt | sort -V) > $output_dir/profiler_vars_all.txt
 cat $(ls $output_dir/serial_data_*.txt | sort -V) > $output_dir/serial_data_all.txt
