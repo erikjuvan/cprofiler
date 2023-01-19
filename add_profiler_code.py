@@ -170,7 +170,7 @@ static void _profiler_print(void)
         IWDG->KR = 0x0000AAAAu;
         printf("%ld,%ld,", p->v[0], p->v[1]);
     }
-    printf("===STOP %c\\n", _run_marker);
+    printf("\\n===STOP %c\\n", _run_marker);
 }
 
 // clear profiler_vars to 0
