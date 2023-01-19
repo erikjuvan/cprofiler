@@ -183,6 +183,7 @@ void profiler_start(char marker)
 {
     if (_profiler_alive && !profiler_running && _run_marker == 0 && marker != 0)
     {
+        printf("\\n%ld Profiler start %c\\n", PROFILER_GET_MS(), marker);
         _profiler_memclear();
         _run_marker = marker;
         profiler_running = 1;
@@ -194,6 +195,7 @@ void profiler_stop(char marker)
     if (profiler_running && marker == _run_marker)
     {
         profiler_running = 0;
+        printf("\\n%ld Profiler stop %c\\n", PROFILER_GET_MS(), marker);
         _profiler_print();
         _run_marker = 0;
     }
@@ -206,6 +208,7 @@ void profiler_end(void)
         _profiler_alive = 0;
         profiler_stop(_run_marker);
         printf("===END\\n");
+        printf("\\nProfiler end\\n");
     }
 }
 
