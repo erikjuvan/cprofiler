@@ -21,8 +21,8 @@ with open(profiler_vars_filename) as f:
         vars.append([line.replace("\n","")])
 
 # extract lines containing data
-start_pattern = re.compile(r'=====BEGIN')
-end_pattern = re.compile(r'=====END')
+start_pattern = re.compile(r'===START')
+end_pattern = re.compile(r'===STOP')
 
 profiler_data_filename = command_line_args[1]
 with open(profiler_data_filename) as f:
