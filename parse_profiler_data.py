@@ -66,14 +66,22 @@ for lst in vars_matrix:
     else:
         lst.append([avg_str, lst[1][1] / lst[0][1]])
 
-# sort
-sort_cnt = sorted(vars_matrix, key=lambda x: x[0][-1], reverse=True)
-sort_accum = sorted(vars_matrix, key=lambda x: x[1][-1], reverse=True)
-sort_avg = sorted(vars_matrix, key=lambda x: x[2][-1], reverse=True)
+# # sort and print sorted (not used ATM since the lower print is more user friendly)
+# sort_cnt = sorted(vars_matrix, key=lambda x: x[0][-1], reverse=True)
+# sort_accum = sorted(vars_matrix, key=lambda x: x[1][-1], reverse=True)
+# sort_avg = sorted(vars_matrix, key=lambda x: x[2][-1], reverse=True)
+# print("\n\nCNT")
+# pprint(sort_cnt[:100])
+# print("\n\nACCUM")
+# pprint(sort_accum[:100])
+# print("AVERAGE")
+# pprint(sort_avg[:100])
 
-print("\n\nCNT")
-pprint(sort_cnt[:100])
-print("\n\nACCUM")
-pprint(sort_accum[:100])
-print("AVERAGE")
-pprint(sort_avg[:100])
+# print all data (useful for direct import to excel)
+print("Function name,Call count,Accumulated time,Average time")
+for lst in vars_matrix:
+    func_str = lst[0][0][:-4]
+    cnt = lst[0][1]
+    accum = lst[1][1]
+    avg = lst[2][1]
+    print("{f},{c},{ac},{av}".format(f=func_str, c=cnt, ac=accum, av=avg))
