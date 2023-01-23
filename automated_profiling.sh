@@ -72,16 +72,12 @@ for i in $(seq 1 $num_of_segments); do
     # run the "add profiler code" script on files from script
     cat $current_file | xargs echo | python add_profiler_code.py
     mv profiler.c profiler.h ../Common
-    # add pofiler.c to sources list so that make will build it
-    grep -q "./Common/profiler.o" $objects_list
-    if [ $? -eq 1 ]; then
-        echo "\"./Common/profiler.o\"" >> $objects_list
-    fi
+    # profiler.c must exist in the objects_list file (build must be ran beforehand in the IDE with the profiler.c file in place)
 
     # rename the outputed profiler_vars.txt to something so we later know in what order were they (e.g. profiler_vars_1.txt)
     mv "profiler_vars.txt" "${output_dir}/profiler_vars_${i}.txt"
 
-    # build project
+    # build project (NOTE!!! Debug folder has to exist, meaning that we have tu run the build process in the IDE beforehand)
     export PATH=$PATH:/c/ST/STM32CubeIDE_1.10.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.10.3-2021.10.win32_1.0.0.202111181127/tools/bin
     cd ../STM32G0B1RE_PMCU/$build_type/
     make -j 8 all
@@ -101,10 +97,6 @@ for i in $(seq 1 $num_of_segments); do
     mv "serial_data.txt" "${output_dir}/serial_data_${i}.txt"
 
 done
-
-# remove profiler.o from objects.list
-# do we actually need this, I don't think so but I'm still keeping it here
-sed -i '/profiler.o/d' $objects_list
 
 # merge created files together, but first check if file already exsists and add sequential number if it exsists
 find_nonexsistent_filename() {
