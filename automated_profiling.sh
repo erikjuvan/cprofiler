@@ -1,9 +1,10 @@
 #!/bin/bash
 
 # scripts used by this bash script
-add_profiler_code=`readlink -f add_profiler_code.py`
-parse_profiler_data=`readlink -f parse_profiler_data.py`
-serial_to_file=`readlink -f serial_to_file.py`
+script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+add_profiler_code=$script_dir/add_profiler_code.py
+parse_profiler_data=$script_dir/parse_profiler_data.py
+serial_to_file=$script_dir/serial_to_file.py
 
 ##################################
 ## Parse command line arguments ##
@@ -14,6 +15,11 @@ while [[ $# -gt 0 ]]; do
   case $1 in
     -p|--proj-dir)
       PROJ_DIR="$2"
+      shift # past argument
+      shift # past value
+      ;;
+    -r|--profiler-dir)
+      PROFILER_DIR="$2"
       shift # past argument
       shift # past value
       ;;
@@ -46,6 +52,7 @@ while [[ $# -gt 0 ]]; do
 
       OPTIONS:
       -p, --proj-dir DIR         root project directory
+      -r, --profiler-dir DIR     directory (inside root dir) where to put generated profiler.c and profiler.h files
       -b, --build-type TYPE      e.g. Debug, Release, ...
       -o, --output-dir DIR       output directory where all results will be saved
       -i, --input-file FILE      filename whit the list of files to be profiled
@@ -54,7 +61,7 @@ while [[ $# -gt 0 ]]; do
       --comma-decimal-separator  use comma as decimal separator, and ; as the field separator
       -h, --help                 this text
 
-      Example: automated_profiling.sh -p project_dir -b Debug -o output -i files.txt"
+      Example: automated_profiling.sh -p project_dir -r profiler_dir -b Debug -o output -i files.txt"
       exit 1
       ;;
     --default)
@@ -80,41 +87,54 @@ export PATH=$PATH:/c/ST/STM32CubeIDE_1.10.1/STM32CubeIDE/plugins/com.st.stm32cub
 export PATH=$PATH:/c/Program\ Files/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/
 
 # check if PROJ_DIR is not set
-if [ -z ${PROJ_DIR+x} ]
-then
+if [ -z ${PROJ_DIR+x} ]; then
     echo "No project directory specified!"
     exit 1
+else
+    #check if it exists
+    if [ ! -d $PROJ_DIR ]; then
+        echo "Project directory does not exist!"
+        exit 1
+    fi
+fi
+
+# check if PROFILER_DIR is not set
+if [ -z ${PROFILER_DIR+x} ] ;then
+    echo "No profiler directory specified!"
+    exit 1
+else 
+    #check if it exists
+    if [ ! -d "$PROJ_DIR/$PROFILER_DIR" ]; then
+        echo "Profiler directory does not exist!"
+        exit 1
+    fi
 fi
 
 # check if BUILD_TYPE is not set
-if [ -z ${BUILD_TYPE+x} ]
-then
+if [ -z ${BUILD_TYPE+x} ]; then
     echo "No build type specified!"
     exit 1
 fi
 
 # check if FRAGMENTATION_NUM is not set
-if [ -z ${FRAGMENTATION_NUM+x} ]
-then
+if [ -z ${FRAGMENTATION_NUM+x} ]; then
     # set fragmentation to default 1
     FRAGMENTATION_NUM=1
 fi
 
 # echo every line and expand variables and prints a little + sign before the line
-#set -x
+set -x
 
 # find the build dir by searching for makefile
 build_dir=`find $PROJ_DIR -type f -iname makefile | grep -i $BUILD_TYPE | xargs dirname`
-if [ ! -d $build_dir ]
-then
+if [ ! -d "$build_dir" ]; then
     echo "No $build_dir found!"
     exit 1
 fi
 
 # Source file where all object files are listed
 list_of_source_files=$INPUT_FILE
-if [ ! -e $list_of_source_files ]
-then
+if [ ! -f "$list_of_source_files" ]; then
     echo "No $list_of_source_files found!"
     exit 1
 fi
@@ -141,16 +161,15 @@ run_profiler () {
     cd -
 
     # run the "add profiler code" script on files from script
-    cat $current_file | xargs echo | python add_profiler_code.py
+    cat $current_file | xargs echo | python $add_profiler_code
 
     # check if script finished successfully
-    if [ ! -e profiler.c ]
-    then
+    if [ ! -f "profiler.c" ]; then
         echo "Error executing script!"
         exit 1
     fi    
     # move profiler source files to project dir
-    mv profiler.c profiler.h $PROJ_DIR
+    mv profiler.c profiler.h $PROJ_DIR/$PROFILER_DIR
     # and move list of generated variables to output dir
     mv profiler_vars.txt $OUTPUT_DIR
 
@@ -161,10 +180,9 @@ run_profiler () {
 
     # program mcu    
     cd $PROJ_DIR
-    merged_hex=$(find ../output/ -type f -name '*.hex' -mmin -2 -printf '%T@ %p\n' | sort -n | tail -1 | cut -f2- -d" ")
+    merged_hex=$(find -type f -name '*.hex' -mmin -2 -printf '%T@ %p\n' | sort -n | tail -1 | cut -f2- -d" ")
     # check if hex exists
-    if [ ! -e $merged_hex ]
-    then
+    if [ ! -f "$merged_hex" ]; then
         echo "No merged hex found!"
         exit 1
     fi   
@@ -174,14 +192,13 @@ run_profiler () {
     cd -
 
     # start serial capture script, it will terminate on its own
-    python serial_to_file.py /dev/ttyS3 1000000
+    python serial_to_file$ /dev/ttyS3 1000000
 
     # move saved data
     mv serial_data.txt $OUTPUT_DIR
 }
 
-if [ $num_of_segments -gt 1 ]
-then
+if [ $num_of_segments -gt 1 ]; then
     # Calculate chunk size
     lines=$(wc -l < $list_of_source_files)
     chunk_size=$(((lines+$num_of_segments-1)/$num_of_segments))
@@ -209,12 +226,17 @@ else
     run_profiler $OUTPUT_DIR/list_of_source_files.txt
 fi
 
+# check if serial data exists 
+if [ ! -f "$OUTPUT_DIR/serial_data.tx" ]; then
+    echo "No serial_data.txt!"
+    exit 1
+fi  
+
 # parse output
 python $parse_profiler_data $OUTPUT_DIR/profiler_vars.txt $OUTPUT_DIR/serial_data.txt > $OUTPUT_DIR/parsed_data.txt
 
 # convert to comma delimited separator if requested
-if [ $COMMA_DECIMAL_SEPARATOR -eq 1 ]
-then
+if [ $COMMA_DECIMAL_SEPARATOR -eq 1 ]; then
     sed -i 's/,/;/g' $OUTPUT_DIR/parsed_data.txt
     sed -i 's/\./,/g' $OUTPUT_DIR/parsed_data.txt
 fi
