@@ -38,6 +38,16 @@ while [[ $# -gt 0 ]]; do
       shift # past argument
       shift # past value
       ;;
+    -s|--serial-port) # serial port
+      SERIAL_PORT="$2"
+      shift # past argument
+      shift # past value
+      ;;
+    -a|--baudrate) # baudrate
+      BAUDRATE="$2"
+      shift # past argument
+      shift # past value
+      ;;
     -f|--fragmentation) # number of fragments
       FRAGMENTATION_NUM="$2"
       shift # past argument
@@ -52,16 +62,19 @@ while [[ $# -gt 0 ]]; do
 
       OPTIONS:
       -p, --proj-dir DIR         root project directory
-      -r, --profiler-dir DIR     directory (inside root dir) where to put generated profiler.c and profiler.h files
-      -b, --build-type TYPE      e.g. Debug, Release, ...
+      -r, --profiler-dir DIR     directory (inside project dir) where to put generated profiler.c and profiler.h files
+      -b, --build-type TYPE      e.g. debug, release, ...
       -o, --output-dir DIR       output directory where all results will be saved
       -i, --input-file FILE      filename whit the list of files to be profiled
-      -f, --fragmentation NUM    fragment profiling to NUM steps (sub-divide file list to NUM of sub-lists)
+      -s, --serial-port PORT     serial port (e.g. COM1, /dev/ttyS3, ...)
+      -a, --baudrate NUM         baud rate (default: 1000000)
+      -f, --fragmentation NUM    fragment profiling to NUM steps. Sub-divide file list to NUM of sub-lists (default: 1).
 
       --decimal-separator-comma  use comma as decimal separator, and ; as the field separator
+      
       -h, --help                 this text
 
-      Example: automated_profiling.sh -p project_dir -r profiler_dir -b Debug -o output -i files.txt"
+      Example: automated_profiling.sh -p project_dir -r profiler_dir -b Debug -o output -i files.txt -s /dev/tty3 -a 1000000"
       exit 1
       ;;
     --default)
@@ -103,11 +116,17 @@ if [ -z ${PROFILER_DIR+x} ] ;then
     echo "No profiler directory specified!"
     exit 1
 else 
-    #check if it exists
+    # check if it exists
     if [ ! -d "$PROJ_DIR/$PROFILER_DIR" ]; then
         echo "Profiler directory does not exist!"
         exit 1
     fi
+fi
+
+# check if OUTPUT_DIR is not set
+if [ -z ${OUTPUT_DIR+x} ] ;then
+    echo "No output directory specified!"
+    exit 1
 fi
 
 # check if BUILD_TYPE is not set
@@ -122,6 +141,38 @@ if [ -z ${FRAGMENTATION_NUM+x} ]; then
     FRAGMENTATION_NUM=1
 fi
 
+# check if BAUDRATE is not set
+if [ -z ${BAUDRATE+x} ]; then
+    # set baudrate to default
+    BAUDRATE=1000000
+fi
+
+# check if SERIAL_PORT is not set
+if [ -z ${SERIAL_PORT+x} ]; then
+    echo "No serial port specified!"
+    exit 1
+else
+    # check if serial port is valid
+    stty < $SERIAL_PORT > /dev/null
+    if [ $? -ne 0 ]; then
+        echo "Serial port '$SERIAL_PORT' not found!"
+        exit 1
+    fi
+fi
+
+# check if INPUT_FILE exists
+if [ -z ${INPUT_FILE+x} ] ;then
+    echo "No input file specified!"
+    exit 1
+else 
+    #check if it exists
+    if [ ! -f "$INPUT_FILE" ]; then
+        echo "Input file '$INPUT_FILE' does not exist!"
+        exit 1
+    fi
+fi
+
+
 # echo every line and expand variables and prints a little + sign before the line
 set -x
 
@@ -134,10 +185,6 @@ fi
 
 # Source file where all object files are listed
 list_of_source_files=$INPUT_FILE
-if [ ! -f "$list_of_source_files" ]; then
-    echo "No $list_of_source_files found!"
-    exit 1
-fi
 
 # create output directory
 mkdir -p $OUTPUT_DIR
@@ -192,7 +239,7 @@ run_profiler () {
     cd -
 
     # start serial capture script, it will terminate on its own
-    python $serial_to_file /dev/ttyS3 1000000
+    python $serial_to_file $SERIAL_PORT $BAUDRATE
 
     # move saved data
     mv serial_data.txt $OUTPUT_DIR
