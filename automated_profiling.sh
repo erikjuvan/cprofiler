@@ -43,8 +43,8 @@ while [[ $# -gt 0 ]]; do
       shift # past argument
       shift # past value
       ;;
-    --comma-decimal-separator) # use , as decimal separator insted of default .
-      COMMA_DECIMAL_SEPARATOR=1
+    --decimal-separator-comma) # use , as decimal separator insted of default .
+      DECIMAL_SEPARATOR_COMMA=1
       shift # past argument
       ;;
     -h|--help) # filename where all source files are listed        
@@ -58,7 +58,7 @@ while [[ $# -gt 0 ]]; do
       -i, --input-file FILE      filename whit the list of files to be profiled
       -f, --fragmentation NUM    fragment profiling to NUM steps (sub-divide file list to NUM of sub-lists)
 
-      --comma-decimal-separator  use comma as decimal separator, and ; as the field separator
+      --decimal-separator-comma  use comma as decimal separator, and ; as the field separator
       -h, --help                 this text
 
       Example: automated_profiling.sh -p project_dir -r profiler_dir -b Debug -o output -i files.txt"
@@ -192,7 +192,7 @@ run_profiler () {
     cd -
 
     # start serial capture script, it will terminate on its own
-    python serial_to_file$ /dev/ttyS3 1000000
+    python $serial_to_file /dev/ttyS3 1000000
 
     # move saved data
     mv serial_data.txt $OUTPUT_DIR
@@ -217,17 +217,20 @@ if [ $num_of_segments -gt 1 ]; then
         # rename file to something so we later know in what order were they (e.g. profiler_vars_1.txt, serial_data_1.txt)
         mv $OUTPUT_DIR/profiler_vars.txt $OUTPUT_DIR/profiler_vars_$i.txt
         mv $OUTPUT_DIR/serial_data.txt $OUTPUT_DIR/serial_data_$i.txt
+
+        # preppend run number to profiler vars
+        sed -i -e "s/^/_$i/" $OUTPUT_DIR/profiler_vars_$i.txt
     done
 
     # join all files together
-    cat $OUTPUT_DIR/profiler_vars_$i.txt > $OUTPUT_DIR/profiler_vars.txt
-    cat $OUTPUT_DIR/serial_data_$i.txt > $OUTPUT_DIR/serial_data.txt
+    cat $OUTPUT_DIR/profiler_vars_*.txt > $OUTPUT_DIR/profiler_vars.txt
+    cat $OUTPUT_DIR/serial_data_*.txt > $OUTPUT_DIR/serial_data.txt
 else
     run_profiler $OUTPUT_DIR/list_of_source_files.txt
 fi
 
 # check if serial data exists 
-if [ ! -f "$OUTPUT_DIR/serial_data.tx" ]; then
+if [ ! -f "$OUTPUT_DIR/serial_data.txt" ]; then
     echo "No serial_data.txt!"
     exit 1
 fi  
@@ -236,7 +239,7 @@ fi
 python $parse_profiler_data $OUTPUT_DIR/profiler_vars.txt $OUTPUT_DIR/serial_data.txt > $OUTPUT_DIR/parsed_data.txt
 
 # convert to comma delimited separator if requested
-if [ $COMMA_DECIMAL_SEPARATOR -eq 1 ]; then
+if [ $DECIMAL_SEPARATOR_COMMA -eq 1 ]; then
     sed -i 's/,/;/g' $OUTPUT_DIR/parsed_data.txt
     sed -i 's/\./,/g' $OUTPUT_DIR/parsed_data.txt
 fi
@@ -244,6 +247,7 @@ fi
 # turn of echo every line
 set +x
 
+exit 0
 
 
 #########################
@@ -251,7 +255,7 @@ set +x
 #########################
 
 # convert lines of files with partial or no path to lines with full path
-: <<'END_COMMENT'
+
 # python way
 python << END
 #!/bin/python
@@ -288,4 +292,3 @@ END
 xargs -a files.txt printf '%s\0' | tr -d $'\r' | xargs -0 -I {} find /c/Users/erikj/home/devel/work/pu/boot_safe_user/user/ -iwholename '*{}'
 # 2
 cat files.txt | while read in; do echo $in | tr -d '\r' | xargs -I {} find /c/Users/erikj/home/devel/work/pu/boot_safe_user/user/ -iwholename '*{}' ; done
-END_COMMENT
