@@ -39,19 +39,16 @@ for line in lines:
     elif start_found:
         extracted_lines.append(line.replace("\n", ""))
 
-# only look at the last entry, since it holds the most info
-lines_of_interest = [extracted_lines[-1]]
+data = "".join(extracted_lines)
 
-# map data to variables
-for l in lines_of_interest:
-    data = l.split(",")
-    if len(data[len(data) - 1]) == 0:
-        data.pop()
-    if len(data) == len(vars):
-        for i,v in enumerate(data):
-            vars[i].append(int(v))
-    else:
-        print("data {data} / variables {var} length mismatch".format(data = len(data), var = len(vars)))
+data = data.split(",")
+if len(data[len(data) - 1]) == 0:
+    data.pop()
+if len(data) == len(vars):
+    for i,v in enumerate(data):
+        vars[i].append(int(v))
+else:
+    print("data {data} / variables {var} length mismatch".format(data = len(data), var = len(vars)))
 
 number_of_vars = 2
 
