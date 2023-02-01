@@ -74,7 +74,7 @@ while [[ $# -gt 0 ]]; do
       
       -h, --help                 this text
 
-      Example: automated_profiling.sh -p project_dir -r profiler_dir -b Debug -o output -i files.txt -s /dev/tty3 -a 1000000"
+      Example: automated_profiling.sh -p project_dir -r profiler_dir -b Debug -o output -i files.txt -s /dev/ttyS3 -a 1000000"
       exit 1
       ;;
     --default)
