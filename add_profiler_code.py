@@ -103,10 +103,9 @@ def add_profiling_info_to_file(filename):
 
                         variable_counter += 1
 
-                        func_start = """
-    /// PROFILER ///
+                        func_start = """    /// PROFILER ///
     uint16_t _profiler_start = PROFILER_GET_US();
-    ////////////////\n"""
+    ////////////////\n\n"""
 
                         func_end = """
     /// PROFILER ///

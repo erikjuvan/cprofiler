@@ -293,8 +293,8 @@ fi
 # parse output
 python $parse_profiler_data $OUTPUT_DIR/profiler_vars.txt $OUTPUT_DIR/serial_data.txt > $OUTPUT_DIR/parsed_data.txt
 
-# convert to comma delimited separator if requested
-if [ $DECIMAL_SEPARATOR_COMMA -eq 1 ]; then
+# convert to comma delimited separator if requested (DECIMAL_SEPARATOR_COMMA was defined, even if it is 0)
+if [ ! -z ${DECIMAL_SEPARATOR_COMMA+x} ]; then
     sed -i 's/,/;/g' $OUTPUT_DIR/parsed_data.txt
     sed -i 's/\./,/g' $OUTPUT_DIR/parsed_data.txt
 fi
