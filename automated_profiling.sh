@@ -200,12 +200,16 @@ run_profiler () {
     current_file=$1
     echo "Processing $current_file"
 
-    # discard unstaged git changes (to put the project back to base state):
-    cd $PROJ_DIR
-    git submodule foreach --quiet --recursive git restore . --quiet
-    git restore .
-    git clean -df
-    cd -
+    # ask if restore all unstaged git changes
+    read -p "(git) Restore all unstaged changes? [y/N]: " restore_git
+    if [[ $restore_git == [yY] ]]; then
+        # discard unstaged git changes (to put the project back to base state):
+        cd $PROJ_DIR
+        git submodule foreach --quiet --recursive git restore . --quiet
+        git restore .
+        git clean -df
+        cd -
+    fi
 
     # run the "add profiler code" script on files from script
     cat $current_file | xargs echo | python $add_profiler_code
