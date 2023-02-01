@@ -203,8 +203,8 @@ run_profiler () {
     # ask if restore all unstaged git changes
     # This solves one problem but creates another:
     # it solves: if we want to keep profiling data inside repository it gives a chance to stage files we wish to keep before restoring repo
-    # it creates: a problem if we want multiple automatic runs (num_of_segments > 1). Now we need to answer the prompt for every run. 
-    # This is currently not a big issue since I am only doing single runs atm.
+    # it creates: a problem if we want multiple automatic runs (num_of_segments > 1). Now we need to answer the prompt for every run.
+    # TODO: potential fix would be to add additional prompt if num_of_segments > 1 asking if we would like to skip this prompt
     read -p "(git) Restore all unstaged changes? [y/N]: " restore_git
     if [[ $restore_git == [yY] ]]; then
         # discard unstaged git changes (to put the project back to base state):
