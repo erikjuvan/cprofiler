@@ -129,6 +129,13 @@ def add_profiling_info_to_file(filename):
                     write_func_end_to_outfile = False
                     continue
 
+            # also add func_end before every return statement (dooh, completely missed that one :P)
+            match = re.search(r'(?<![a-zA-Z0-9_])return(?![a-zA-Z0-9_])', line)
+            if match and write_func_end_to_outfile == True:
+                outfile.write(func_end)
+                outfile.write(line)
+                continue
+
             outfile.write(line)
 
         outfile.close()
