@@ -16,70 +16,70 @@ def parse_cmdline_arguments():
     args = parser.parse_args()
     return args
 
-args = parse_cmdline_arguments()
+def get_variables_per_function(all_vars):
+    vars_per_function = []
+    for v in all_vars:
+        var_name_suffix = v[v.rfind("_"):] # find last _ (to find _cnt, _accum)
+        if var_name_suffix in vars_per_function:
+            break
+        vars_per_function.append(var_name_suffix)
 
-# read variable names
-with open(args.variables_file) as f:
-    variables = []
-    for line in f:
-        variables.append([line.replace("\n","")])
+    return vars_per_function
 
-# extract lines containing data
-start_pattern = re.compile(r'===START')
-end_pattern = re.compile(r'===STOP')
-start_found = False
-extracted_lines = []
-with open(args.data_file) as f:
-    serial_data = f.readlines()
+if __name__ == "__main__":
 
-for line in serial_data:
-    if start_pattern.search(line):
-        start_found = True
-    elif end_pattern.search(line):
-        start_found = False
-    elif start_found:
-        extracted_lines.append(line.replace("\n", ""))
+    args = parse_cmdline_arguments()
 
-data = "".join(extracted_lines)
+    # read variable names
+    with open(args.variables_file) as f:
+        variables = []
+        for line in f:
+            variables.append(line.replace("\n",""))
 
-data = data.split(",")
-if len(data[len(data) - 1]) == 0:
-    data.pop()
-if len(data) == len(variables):
-    for i,v in enumerate(data):
-        variables[i].append(int(v))
-else:
-    print("data {data} / variables {var} length mismatch".format(data = len(data), var = len(variables)))
+    # extract lines containing data
+    start_pattern = re.compile(r'===START')
+    end_pattern = re.compile(r'===STOP')
+    start_found = False
+    extracted_lines = []
+    with open(args.data_file) as f:
+        serial_data = f.readlines()
 
-number_of_vars = 2
+    for line in serial_data:
+        if start_pattern.search(line):
+            start_found = True
+        elif end_pattern.search(line):
+            start_found = False
+        elif start_found:
+            extracted_lines.append(line.replace("\n", ""))
 
-# generate a matrix
-vars_matrix = [variables[i:i+number_of_vars] for i in range(0, len(variables), number_of_vars)]
+    data = "".join(extracted_lines)
 
-# add avg field to matrix
-for lst in vars_matrix:
-    avg_str = lst[0][0][:-3] + "avg"
-    if lst[0][1] == 0: # cnt == 0
-        lst.append([avg_str, 0])
+    data = data.split(",")  
+    variables_and_data = []
+    if len(data[len(data) - 1]) == 0:
+        data.pop()
+    if len(data) == len(variables):
+        for i in range(len(data)):
+            variables_and_data.append([variables[i], int(data[i])])
     else:
-        lst.append([avg_str, lst[1][1] / lst[0][1]])
+        print("data {data} / variables {var} length mismatch".format(data = len(data), var = len(variables)))
 
-# # sort and print sorted (not used ATM since the lower print is more user friendly)
-# sort_cnt = sorted(vars_matrix, key=lambda x: x[0][-1], reverse=True)
-# sort_accum = sorted(vars_matrix, key=lambda x: x[1][-1], reverse=True)
-# sort_avg = sorted(vars_matrix, key=lambda x: x[2][-1], reverse=True)
-# print("\n\nCNT")
-# pprint(sort_cnt[:100])
-# print("\n\nACCUM")
-# pprint(sort_accum[:100])
-# print("AVERAGE")
-# pprint(sort_avg[:100])
+    vars_per_function = get_variables_per_function(variables)
 
-# print all data (useful for direct import to excel)
-print("Function name,Call count,Accumulated time,Average time")
-for lst in vars_matrix:
-    func_str = lst[0][0][:-4]
-    cnt = lst[0][1]
-    accum = lst[1][1]
-    avg = lst[2][1]
-    print("{f},{c},{ac},{av}".format(f=func_str, c=cnt, ac=accum, av=avg))
+    number_of_vars_per_function = len(vars_per_function)
+
+    # generate a matrix
+    vars_matrix = [variables_and_data[i:i+number_of_vars_per_function] for i in range(0, len(variables_and_data), number_of_vars_per_function)]
+
+    top_row = "Function name"
+    for v in vars_per_function:
+        top_row += "," + v
+
+    # print all data (useful for direct import to excel)
+    print(top_row)
+    for lst in vars_matrix:
+        row = lst[0][0][:-len(vars_per_function[0])] # function name without suffix, extracted from first entry by removing the _suffix
+        for i in range(number_of_vars_per_function):
+            row += "," + str(lst[i][1])
+
+        print(row)
