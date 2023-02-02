@@ -1,37 +1,38 @@
 #!/usr/bin/python
-import sys
 import re
-import os
+import argparse
 from pprint import pprint
 
-command_line_args = sys.argv
-if not sys.stdin.isatty():
-    command_line_args.extend(sys.stdin.readlines())
+def parse_cmdline_arguments():
+    """
+    Parse command line arguments using argparse. Supports piped calls.
+    Return namespace, with arguments as members. Can be converted to dictionary by calling vars(args).
+    """
+    parser = argparse.ArgumentParser(description='Parse data gathered from code added by add_profiler_code.py',
+        epilog = 'Example: parse_profiler_data.py variables.txt data.txt')
+    parser.add_argument('variables_file', help='File that contains the profiler variables')
+    parser.add_argument('data_file', help='File that contains the profiler data')
 
-command_line_args.pop(0)
+    args = parser.parse_args()
+    return args
 
-if len(command_line_args) == 0:
-    exit(0)
+args = parse_cmdline_arguments()
 
 # read variable names
-profiler_vars_filename = command_line_args[0]
-with open(profiler_vars_filename) as f:
-    vars = []
+with open(args.variables_file) as f:
+    variables = []
     for line in f:
-        vars.append([line.replace("\n","")])
+        variables.append([line.replace("\n","")])
 
 # extract lines containing data
 start_pattern = re.compile(r'===START')
 end_pattern = re.compile(r'===STOP')
-
-profiler_data_filename = command_line_args[1]
-with open(profiler_data_filename) as f:
-    lines = f.readlines()
-
 start_found = False
 extracted_lines = []
+with open(args.data_file) as f:
+    serial_data = f.readlines()
 
-for line in lines:
+for line in serial_data:
     if start_pattern.search(line):
         start_found = True
     elif end_pattern.search(line):
@@ -44,16 +45,16 @@ data = "".join(extracted_lines)
 data = data.split(",")
 if len(data[len(data) - 1]) == 0:
     data.pop()
-if len(data) == len(vars):
+if len(data) == len(variables):
     for i,v in enumerate(data):
-        vars[i].append(int(v))
+        variables[i].append(int(v))
 else:
-    print("data {data} / variables {var} length mismatch".format(data = len(data), var = len(vars)))
+    print("data {data} / variables {var} length mismatch".format(data = len(data), var = len(variables)))
 
 number_of_vars = 2
 
 # generate a matrix
-vars_matrix = [vars[i:i+number_of_vars] for i in range(0, len(vars), number_of_vars)]
+vars_matrix = [variables[i:i+number_of_vars] for i in range(0, len(variables), number_of_vars)]
 
 # add avg field to matrix
 for lst in vars_matrix:
