@@ -1,19 +1,47 @@
 #!/usr/bin/python
+
 import sys
 import re
 import os
+import argparse
 
-variable_counter = 1
 
-def add_profiling_info_to_file(filename):
-    global variable_counter
+def parse_cmdline_arguments():
+    """
+    Parse command line arguments using argparse. Supports piped calls.
+    Return namespace, with arguments as members. Can be converted to dictionary by calling vars(args).
+    """
+    parser = argparse.ArgumentParser(description='Adds profiler code to supplied C source files',
+        epilog='Example: add_profiler_code.py -c -e exclude_functions.txt file1.c file2.c file3.c')
+    parser.add_argument("files", nargs="*", help='Files to be profiled')
+    parser.add_argument('-c', '--count-only', action="store_true", help='Add only counter to profiled functions')
+    parser.add_argument('-e', '--exclude-functions-file', help='Exclude functions provided in the file')
+    parser.add_argument('-i', '--include-functions-file', help='Include only functions provided in the file')
+
+    args = parser.parse_args()    
+    # check if script is called from a pipe and extend the files argument with the contents
+    if not sys.stdin.isatty():
+        # remove empty strings
+        stdin_list = list(filter(None, sys.stdin.read().splitlines()))
+        # extend files argument with additional stdin
+        args.files.extend(stdin_list)
+    return args
+
+# must be global function counter so it keeps count between files
+function_counter = 0
+
+def add_profiling_code_to_source_file(filename, count_only, exclude_functions_list, include_functions_list):
+    global function_counter
     infilename = filename
     outfilename = filename + ".profiled"
+    contents_list = []
 
-    print(filename)
+    print(filename, end="")
+
+    at_least_one_function_is_being_profiled = False # Used to not insert #include "profiler.h" if no function is being profiled
 
     #with open(filename, "r", encoding='unicode_escape') as infile, open(outfilename, "w") as outfile:
-    with open(filename, "r") as infile, open(outfilename, "w") as outfile:
+    with open(filename, "r") as infile:
         cnt  = 0
         func_name = ""
         func_start = ""
@@ -24,13 +52,11 @@ def add_profiling_info_to_file(filename):
         match = re.search(r"([^\/]+$)", infilename)
         if match:
             infilename = match.group(1)
-        
+
         infilename = infilename.replace(".", "_")
 
-        outfile.write("#include \"profiler.h\"\n\n")
-
         lines_history = []
-        write_func_end_to_outfile = False
+        write_func_end = False
         for line in infile:
 
             lines_history.append(line)
@@ -38,16 +64,16 @@ def add_profiling_info_to_file(filename):
             # check if the line is a comment "//"
             match = re.search(r"^\s*\/\/", line)
             if match:
-                outfile.write(line)
+                contents_list.append(line)
                 continue
 
             if "@{" in line or "@}" in line:
-                outfile.write(line)
+                contents_list.append(line)
                 continue
-        
+
             # case when "{}"
             if "{" in line and "}" in line:
-                outfile.write(line)
+                contents_list.append(line)
                 continue
 
             if "{" in line:
@@ -94,20 +120,40 @@ def add_profiling_info_to_file(filename):
 
                     if match_found:
                         func_name = match.group(1)
+
+                        # check if it is in the excluded functions list
+                        if len(exclude_functions_list) > 0 and func_name in exclude_functions_list:
+                            contents_list.append(line)
+                            continue
+
+                        # check if it is in the included functions list
+                        if len(include_functions_list) > 0 and func_name not in include_functions_list:
+                            contents_list.append(line)
+                            continue
+
                         def make_var(name):
-                            var_name = "_" + str(variable_counter) + "_" + infilename + "_" + func_name + name
+                            var_name = "_" + str(function_counter) + "_" + infilename + "_" + func_name + name
                             added_variables.append(var_name)
                             return var_name
-                        var_cnt = make_var("_cnt")
-                        var_accum = make_var("_accum")
 
-                        variable_counter += 1
+                        # Increment function counter before creating variables so the count starts at 1
+                        function_counter += 1
 
-                        func_start = """    /// PROFILER ///
+                        # if add only count
+                        if count_only:
+                            var_cnt = make_var("_cnt")
+                            func_start = """    /// PROFILER ///
+    profiler_vars.{vc}++;
+    ////////////////\n\n""".format(vc = var_cnt)
+                            func_end = ""
+
+                        else:
+                            var_cnt = make_var("_cnt")
+                            var_accum = make_var("_accum")
+                            func_start = """    /// PROFILER ///
     uint16_t _profiler_start = PROFILER_GET_US();
     ////////////////\n\n"""
-
-                        func_end = """
+                            func_end = """
     /// PROFILER ///
     if (profiler_running)
     {{
@@ -116,35 +162,44 @@ def add_profiling_info_to_file(filename):
     }}
     ////////////////\n""".format(vc = var_cnt, vacc = var_accum)
 
-                        outfile.write(line)
-                        outfile.write(func_start)
-                        write_func_end_to_outfile = True
+                        contents_list.append(line)
+                        contents_list.append(func_start)
+                        write_func_end = True
+                        at_least_one_function_is_being_profiled = True
                         continue
 
             if "}" in line:
                 cnt -= 1
-                if cnt == 0 and write_func_end_to_outfile == True:
-                    outfile.write(func_end)
-                    outfile.write(line)
-                    write_func_end_to_outfile = False
+                if cnt == 0 and write_func_end == True:
+                    contents_list.append(func_end)
+                    contents_list.append(line)
+                    write_func_end = False
                     continue
 
             # also add func_end before every return statement (dooh, completely missed that one :P)
             match = re.search(r'(?<![a-zA-Z0-9_])return(?![a-zA-Z0-9_])', line)
-            if match and write_func_end_to_outfile == True:
-                outfile.write(func_end)
-                outfile.write(line)
+            if match and write_func_end == True:
+                contents_list.append(func_end)
+                contents_list.append(line)
                 continue
 
-            outfile.write(line)
+            contents_list.append(line)
 
-        outfile.close()
-        os.replace(outfilename, filename)
+    if len(include_functions_list) and at_least_one_function_is_being_profiled:
+        contents_list.insert(0, "#include \"profiler.h\"\n\n")
+        print("    MATCH")
+    else:
+        print("") # newline
 
-        return added_variables
+    with open(outfilename, "w") as outfile:
+        outfile.writelines(contents_list)
+
+    os.replace(outfilename, filename)
+
+    return added_variables
 
 
-def add_profiler_variables_to_new_file(list_of_added_variables):
+def create_profiler_source_and_header_files(list_of_added_variables, count_only):
     fprofiler_c = open("profiler.c", "w")
 
     profiler_c_src = """#include <stdint.h>
@@ -160,8 +215,14 @@ static char _run_marker = 0;
 static char _profiler_alive = 1;
 
 typedef struct
-{
-    uint32_t v[2]; // value
+{"""
+    if count_only:
+        profiler_c_src +="""
+    uint32_t v;"""
+    else:
+        profiler_c_src +="""
+        uint32_t v[2];"""
+    profiler_c_src +="""
 } prof_func_data;
 
 static void _profiler_print(void)
@@ -173,8 +234,14 @@ static void _profiler_print(void)
     for (int i = 0; i < size; ++i, ++p)
     {
         WWDG->CR = 127;
-        IWDG->KR = 0x0000AAAAu;
-        printf("%lu,%lu,", p->v[0], p->v[1]);
+        IWDG->KR = 0x0000AAAAu;"""
+    if count_only:
+        profiler_c_src += """
+        printf("%lu,", p->v);"""
+    else:
+        profiler_c_src += """
+        printf("%lu,%lu,", p->v[0], p->v[1]);"""
+    profiler_c_src += """
     }
     printf("\\n===STOP %c\\n", _run_marker);
 }
@@ -193,11 +260,11 @@ void profiler_start(char marker)
         _profiler_memclear();
         _run_marker = marker;
         profiler_running = 1;
-    }     
+    }
 }
 
 void profiler_stop(char marker)
-{    
+{
     if (profiler_running && marker == _run_marker)
     {
         profiler_running = 0;
@@ -223,7 +290,7 @@ void profiler_end(void)
     fprofiler_c.write(profiler_c_src)
 
 
-    fprofiler_h = open("profiler.h", "w")    
+    fprofiler_h = open("profiler.h", "w")
 
     profiler_h_src = """#pragma once
 
@@ -254,34 +321,48 @@ void profiler_stop(char marker);
 void profiler_end(void);
 
 """
-
     fprofiler_h.write(profiler_h_src)
 
-def generate_list_of_profiler_variables(list_of_added_variables):
+
+def create_file_with_list_of_profiler_variables(list_of_added_variables):
     f = open("profiler_vars.txt", "w")
     for entry in list_of_added_variables:
         f.write(entry + "\n")
 
 
-if __name__ == '__main__':   
+if __name__ == '__main__':
 
-    command_line_args = sys.argv
-    if not sys.stdin.isatty():
-        command_line_args.extend(sys.stdin.readlines())
+    args = parse_cmdline_arguments()
 
-    command_line_args.pop(0)
-
-    if len(command_line_args) == 0:
+    if len(args.files) == 0:
+        print("No files provided.")
         exit(0)
 
-    list_of_input_files = command_line_args[0].replace("\n", "")
-    list_of_input_files = list_of_input_files.split(" ")
+    # Generate exclude functions list if any file was passed
+    exclude_functions_list = []
+    if args.exclude_functions_file != None:
+        with open(args.exclude_functions_file) as f:
+            exclude_functions_list = f.readlines()
+            exclude_functions_list = [string.strip() for string in exclude_functions_list if string.strip()] # remove newlines and whitespaces strings
+
+    # Generate include functions list if any file was passed
+    include_functions_list = []
+    if args.include_functions_file != None:
+        with open(args.include_functions_file) as f:
+            include_functions_list = f.readlines()
+            include_functions_list = [string.strip() for string in include_functions_list if string.strip()] # remove newlines and whitespaces strings
 
     global_functions_variables = []
 
-    for arg_file in list_of_input_files:
-        global_functions_variables.extend(add_profiling_info_to_file(arg_file))
+    list_of_input_files = []
+    for f in args.files:
+        fs = f.replace("\n", " ")
+        list_of_input_files.extend(fs.split(" "))
 
-    add_profiler_variables_to_new_file(global_functions_variables)
-    generate_list_of_profiler_variables(global_functions_variables)
+    for infile in list_of_input_files:
+        global_functions_variables.extend(add_profiling_code_to_source_file(
+            infile, args.count_only, exclude_functions_list, include_functions_list))
+
+    create_profiler_source_and_header_files(global_functions_variables, args.count_only)
+    create_file_with_list_of_profiler_variables(global_functions_variables)
     
