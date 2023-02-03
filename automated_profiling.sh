@@ -57,6 +57,11 @@ while [[ $# -gt 0 ]]; do
       DECIMAL_SEPARATOR_COMMA=1
       shift # past argument
       ;;
+    --add-profiler-code-args) # Arguments for script add_profiler_code.py
+      ADD_PROFILER_CODE_ARGS="$2"
+      shift # past argument
+      shift # past value
+      ;;
     -h|--help) # filename where all source files are listed        
       echo "Usage: automated_profiling.sh [OPTIONS]
 
@@ -71,6 +76,7 @@ while [[ $# -gt 0 ]]; do
       -f, --fragmentation NUM    fragment profiling to NUM steps. Sub-divide file list to NUM of sub-lists (default: 1).
 
       --decimal-separator-comma  use comma as decimal separator, and ; as the field separator
+      --add-profiler-code-args   command line arguments for add_profiler_code.py
       
       -h, --help                 this text
 
@@ -205,7 +211,7 @@ run_profiler () {
     # it solves: if we want to keep profiling data inside repository it gives a chance to stage files we wish to keep before restoring repo
     # it creates: a problem if we want multiple automatic runs (num_of_segments > 1). Now we need to answer the prompt for every run.
     # TODO: potential fix would be to add additional prompt if num_of_segments > 1 asking if we would like to skip this prompt
-    read -p "(git) Restore all unstaged changes? [y/N]: " restore_git
+    read -p "(git) Discard all unstaged changes? [y/N]: " restore_git
     if [[ $restore_git == [yY] ]]; then
         # discard unstaged git changes (to put the project back to base state):
         cd $PROJ_DIR
@@ -216,7 +222,7 @@ run_profiler () {
     fi
 
     # run the "add profiler code" script on files from script
-    cat $current_file | xargs echo | python $add_profiler_code
+    cat $current_file | xargs echo | python $add_profiler_code $ADD_PROFILER_CODE_ARGS
 
     # check if script finished successfully
     if [ ! -f "profiler.c" ]; then
