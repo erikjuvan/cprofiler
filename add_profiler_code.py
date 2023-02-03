@@ -185,11 +185,12 @@ def add_profiling_code_to_source_file(filename, count_only, exclude_functions_li
 
             contents_list.append(line)
 
-    if len(include_functions_list) and at_least_one_function_is_being_profiled:
+    if at_least_one_function_is_being_profiled:
         contents_list.insert(0, "#include \"profiler.h\"\n\n")
-        print("    MATCH")
-    else:
-        print("") # newline
+        if len(include_functions_list) > 0:        
+            print("    MATCH", end="")
+
+    print("") # newline
 
     with open(outfilename, "w") as outfile:
         outfile.writelines(contents_list)
