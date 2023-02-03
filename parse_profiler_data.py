@@ -1,7 +1,9 @@
 #!/usr/bin/python
 import re
 import argparse
+import operator
 from pprint import pprint
+
 
 def parse_cmdline_arguments():
     """
@@ -12,9 +14,11 @@ def parse_cmdline_arguments():
         epilog = 'Example: parse_profiler_data.py variables.txt data.txt')
     parser.add_argument('variables_file', help='File that contains the profiler variables')
     parser.add_argument('data_file', help='File that contains the profiler data')
+    parser.add_argument('--print-count-cond', help='e.g. --print-count-cond >=3 will only print functions where number of function calls was greater than or equal to 3')
 
     args = parser.parse_args()
     return args
+
 
 def get_variables_per_function(all_vars):
     vars_per_function = []
@@ -25,6 +29,22 @@ def get_variables_per_function(all_vars):
         vars_per_function.append(var_name_suffix)
 
     return vars_per_function
+
+
+def parse_print_count_cond(cond):
+    number = re.findall(r"\d+", cond)
+    num = int(number[0])
+
+    ops = {
+        ">=": operator.ge,
+        "=": operator.eq,
+        "<=": operator.le,
+        ">": operator.gt,
+        "<": operator.lt
+    }
+    op = re.findall(r"\D+", cond)
+    return num, ops[op[0]]
+
 
 if __name__ == "__main__":
 
@@ -75,9 +95,22 @@ if __name__ == "__main__":
     for v in vars_per_function:
         top_row += "," + v
 
+    if args.print_count_cond is not None:
+        count_condition_limit, count_condition_operator = parse_print_count_cond(args.print_count_cond)
+    else:
+        count_condition_limit = 0
+        count_condition_operator = None
+
     # print all data (useful for direct import to excel)
     print(top_row)
     for lst in vars_matrix:
+
+        if count_condition_operator != None:
+            if count_condition_operator(lst[0][1], count_condition_limit):
+                pass
+            else:
+                continue
+
         row = lst[0][0][:-len(vars_per_function[0])] # function name without suffix, extracted from first entry by removing the _suffix
         for i in range(number_of_vars_per_function):
             row += "," + str(lst[i][1])
