@@ -59,6 +59,9 @@ def add_profiling_code_to_source_file(filename, count_only, exclude_functions_li
         write_func_end = False
         for line in infile:
 
+            # Debug output
+            # print("{}:{}".format(cnt, line))
+            
             lines_history.append(line)
 
             # check if the line is a comment "//"
@@ -98,7 +101,7 @@ def add_profiling_code_to_source_file(filename, count_only, exclude_functions_li
                         if match:
                             break
 
-                        # check if the line contains an = sign
+                        # check if the line is a typedef
                         if "typedef" in l:
                             break
 
@@ -179,6 +182,10 @@ def add_profiling_code_to_source_file(filename, count_only, exclude_functions_li
             # also add func_end before every return statement (dooh, completely missed that one :P)
             match = re.search(r'(?<![a-zA-Z0-9_])return(?![a-zA-Z0-9_])', line)
             if match and write_func_end == True:
+                # case when multiline comment is on a single line and contains word return (easy case of multiline comment)
+                if "/*" in line and "*/" in line and line.index("/*") < line.index("*/") and line.index("return") > line.index("/*"):
+                    contents_list.append(line)
+                    continue
                 contents_list.append(func_end)
                 contents_list.append(line)
                 continue
