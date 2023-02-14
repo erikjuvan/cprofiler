@@ -14,7 +14,7 @@ def parse_cmdline_arguments():
         epilog = 'Example: parse_profiler_data.py variables.txt data.txt')
     parser.add_argument('variables_file', help='File that contains the profiler variables')
     parser.add_argument('data_file', help='File that contains the profiler data')
-    parser.add_argument('p', '--print-count-cond', help='e.g. -p >=3 will only print functions where number of function calls was greater than or equal to 3')
+    parser.add_argument('-p', '--print-count-cond', help='e.g. -p >=3 will only print functions where number of function calls was greater than or equal to 3')
 
     args = parser.parse_args()
     return args
