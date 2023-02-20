@@ -318,7 +318,7 @@ struct profiler_vars
     for entry in list_of_added_variables:
         profiler_h_src += "    uint32_t " + entry + ";\n"
 
-    profiler_h_src += "} profiler_vars;\n\n"
+    profiler_h_src += "};\n\n"
 
     profiler_h_src += """
 extern char profiler_running;
