@@ -212,8 +212,17 @@ def create_profiler_source_and_header_files(list_of_added_variables, count_only)
 
     profiler_c_src = """#include <stdint.h>
 #include <string.h>
-#include "trace.h"
 #include "profiler.h"
+
+// PRINT SPECIFICS - MODIFY AS NEEDED //
+// USER
+//#include "trace.h"
+//#define PROFILER_PRINT(fmt, ...)    printf(fmt, ## __VA_ARGS__)
+
+// SAFE 
+#include "trace_support.h"
+#define PROFILER_PRINT(fmt, ...)    TRACE_PRINT(TRACE_LEVEL_INFO, TRACE_OUTPUT_TYPE_WITHOUT_HEAD_AND_NL, fmt, ## __VA_ARGS__)
+////////////////////////////////////////
 
 char profiler_running = 0;
 
@@ -235,7 +244,7 @@ typedef struct
 
 static void _profiler_print(void)
 {
-    printf("===START %c\\n", _run_marker);
+    PROFILER_PRINT("===START %c\\n", _run_marker);
     // print all data
     int size = sizeof(profiler_vars) / sizeof(prof_func_data);
     prof_func_data *p = (prof_func_data *)&profiler_vars;
@@ -245,13 +254,13 @@ static void _profiler_print(void)
         IWDG->KR = 0x0000AAAAu;"""
     if count_only:
         profiler_c_src += """
-        printf("%lu,", p->v);"""
+        PROFILER_PRINT("%lu,", p->v);"""
     else:
         profiler_c_src += """
-        printf("%lu,%lu,", p->v[0], p->v[1]);"""
+        PROFILER_PRINT("%lu,%lu,", p->v[0], p->v[1]);"""
     profiler_c_src += """
     }
-    printf("\\n===STOP %c\\n", _run_marker);
+    PROFILER_PRINT("\\n===STOP %c\\n", _run_marker);
 }
 
 // clear profiler_vars to 0
@@ -264,7 +273,7 @@ void profiler_start(char marker)
 {
     if (_profiler_alive && !profiler_running && _run_marker == 0 && marker != 0)
     {
-        printf("\\n%lu Profiler start %c\\n", PROFILER_GET_MS(), marker);
+        PROFILER_PRINT("\\n%lu Profiler start %c\\n", PROFILER_GET_MS(), marker);
         _profiler_memclear();
         _run_marker = marker;
         profiler_running = 1;
@@ -276,7 +285,7 @@ void profiler_stop(char marker)
     if (profiler_running && marker == _run_marker)
     {
         profiler_running = 0;
-        printf("\\n%lu Profiler stop %c\\n", PROFILER_GET_MS(), marker);
+        PROFILER_PRINT("\\n%lu Profiler stop %c\\n", PROFILER_GET_MS(), marker);
         _profiler_print();
         _run_marker = 0;
     }
@@ -288,8 +297,8 @@ void profiler_end(void)
     {
         _profiler_alive = 0;
         profiler_stop(_run_marker);
-        printf("===END\\n");
-        printf("\\nProfiler end\\n");
+        PROFILER_PRINT("===END\\n");
+        PROFILER_PRINT("\\nProfiler end\\n");
     }
 }
 
