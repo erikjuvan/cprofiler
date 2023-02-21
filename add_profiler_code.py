@@ -216,12 +216,12 @@ def create_profiler_source_and_header_files(list_of_added_variables, count_only)
 
 // PRINT SPECIFICS - MODIFY AS NEEDED //
 // USER
-//#include "trace.h"
-//#define PROFILER_PRINT(fmt, ...)    printf(fmt, ## __VA_ARGS__)
+#include "trace.h"
+#define PROFILER_PRINT(fmt, ...)    printf(fmt, ## __VA_ARGS__)
 
 // SAFE 
-#include "trace_support.h"
-#define PROFILER_PRINT(fmt, ...)    TRACE_PRINT(TRACE_LEVEL_INFO, TRACE_OUTPUT_TYPE_WITHOUT_HEAD_AND_NL, fmt, ## __VA_ARGS__)
+//#include "trace_support.h"
+//#define PROFILER_PRINT(fmt, ...)    TRACE_PRINT(TRACE_LEVEL_INFO, TRACE_OUTPUT_TYPE_WITHOUT_HEAD_AND_NL, fmt, ## __VA_ARGS__)
 ////////////////////////////////////////
 
 char profiler_running = 0;
@@ -238,7 +238,7 @@ typedef struct
     uint32_t v;"""
     else:
         profiler_c_src +="""
-        uint32_t v[2];"""
+    uint32_t v[2];"""
     profiler_c_src +="""
 } prof_func_data;
 
